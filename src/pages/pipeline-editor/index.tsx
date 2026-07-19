@@ -4,11 +4,22 @@ import CodeMirror from '@uiw/react-codemirror'
 import { EditorView } from '@codemirror/view'
 import { StreamLanguage } from '@codemirror/language'
 import { groovy } from '@codemirror/legacy-modes/mode/groovy'
+import { json as jsonMode } from '@codemirror/legacy-modes/mode/javascript'
 import { createTheme } from '@uiw/codemirror-themes'
 import { tags as t } from '@lezer/highlight'
 import { toast } from 'sonner'
 import { JsonView } from '../../components/JsonView'
-import { groovyScript, initialLabels, ctxChips, dryRunEvents, type DryRunEvent } from './mock'
+import {
+  groovyScript,
+  initialLabels,
+  ctxChips,
+  dryRunEvents,
+  injectTemplates,
+  injectPipelineMeta,
+  mockInject,
+  type DryRunEvent,
+  type InjectResult,
+} from './mock'
 import './pipelineEditor.css'
 
 // Dark theme matching the demo's Groovy highlighting palette exactly.
@@ -114,6 +125,37 @@ function PipelineEditor() {
   }
 
   useEffect(() => () => { if (runTimer.current) window.clearTimeout(runTimer.current) }, [])
+
+  // Inject state (production runner — real alerts/executions land in DB)
+  const [injectEventJson, setInjectEventJson] = useState(injectTemplates[0].eventJson)
+  const [injecting, setInjecting] = useState(false)
+  const [injectResult, setInjectResult] = useState<InjectResult | null>(null)
+
+  const runInject = async () => {
+    setInjecting(true)
+    setInjectResult(null)
+    const result = await mockInject(injectEventJson, injectPipelineMeta)
+    setInjectResult(result)
+    setInjecting(false)
+    if (result.outcome === 'SUCCESS') {
+      if (result.alertFingerprint) {
+        toast.success('注入成功 · 已生成告警', { description: `fingerprint=${result.alertFingerprint}` })
+      } else {
+        toast.success('注入成功 · 未命中告警条件')
+      }
+    } else if (result.outcome === 'FAILED') {
+      toast.error('注入失败 · runner 抛出异常')
+    } else if (result.outcome === 'PIPELINE_NOT_FOUND') {
+      toast.error('Pipeline 未加载', { description: '检查是否已发布/热加载' })
+    } else {
+      toast.error('eventJson 不合法')
+    }
+  }
+
+  const loadTemplate = (idx: number) => {
+    setInjectEventJson(injectTemplates[idx].eventJson)
+    setInjectResult(null)
+  }
 
   const switchEvent = (next: DryRunEvent) => {
     setEv(next)
@@ -371,9 +413,101 @@ function PipelineEditor() {
               ))}
             </div>
           </div>
+
+          {/* Inject — production runner, real DB writes */}
+          <div className="section-block inject-block">
+            <p className="section-title inject-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+              生产注入 · 真事件触发
+            </p>
+
+            <div className="inject-warning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 22h20L12 2z" /><path d="M12 9v4" /><circle cx="12" cy="17" r="0.8" fill="currentColor" /></svg>
+              <div>
+                <div className="iw-strong">真落库 · 不会回滚</div>
+                <div className="iw-sub">
+                  与干跑不同:走生产 runner,告警真实落库,execution 记录真实写入。
+                  <span className="mono">POST /api/v1/namespaces/{injectPipelineMeta.namespace}/pipelines/{injectPipelineMeta.name}/inject</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="inject-templates">
+              <label className="it-label">示例模板</label>
+              <select
+                className="it-select"
+                defaultValue={0}
+                onChange={(e) => loadTemplate(Number(e.target.value))}
+              >
+                {injectTemplates.map((tpl, i) => (
+                  <option key={i} value={i}>
+                    {tpl.label} · {tpl.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="inject-editor">
+              <CodeMirror
+                value={injectEventJson}
+                height="220px"
+                theme={groovyTheme}
+                extensions={[StreamLanguage.define(jsonMode), EditorView.lineWrapping]}
+                onChange={(v) => setInjectEventJson(v)}
+                basicSetup={{ lineNumbers: true, highlightActiveLine: true, foldGutter: false }}
+              />
+            </div>
+
+            <button
+              className="inject-btn"
+              type="button"
+              disabled={injecting}
+              onClick={runInject}
+            >
+              {injecting ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin"><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              )}
+              {injecting ? '注入中…' : '执行注入'}
+            </button>
+
+            {injectResult && <InjectResultCard result={injectResult} />}
+          </div>
         </div>
       </main>
     </>
+  )
+}
+
+function InjectResultCard({ result }: { result: InjectResult }) {
+  const ok = result.outcome === 'SUCCESS'
+  const partial = ok && !result.alertFingerprint
+  const cls = ok ? (partial ? 'partial' : 'success') : 'fail'
+  return (
+    <div className={`inject-result ${cls}`}>
+      <div className="ir-head">
+        <span className={`ir-badge ${cls}`}>{result.outcome}</span>
+        <span className="ir-msg">{result.message}</span>
+        {typeof result.durationMs === 'number' && (
+          <span className="ir-dur">{result.durationMs} ms</span>
+        )}
+      </div>
+      {result.executionId && (
+        <div className="ir-links">
+          <Link to="/executions" className="ir-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg>
+            execution: <span className="mono">{result.executionId}</span>
+          </Link>
+          {result.alertFingerprint && (
+            <Link to="/alerts" className="ir-link alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 16v-5a6 6 0 0 0-12 0v5l-2 2h16l-2-2z" /><path d="M10 21a2 2 0 0 0 4 0" /></svg>
+              alert: <span className="mono">{result.alertFingerprint}</span>
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
