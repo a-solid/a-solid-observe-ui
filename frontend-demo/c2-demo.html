@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 演示</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border-soft: rgba(30, 64, 175, 0.10);
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+  --exec-success: #16A34A;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(220, 38, 38, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top nav (compact, same as C1) === */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px 48px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.spacer { flex: 1; }
+.nav-link {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 200ms var(--ease);
+}
+.nav-link:hover { color: var(--color-primary); }
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  border: none;
+  background: transparent;
+  font-family: inherit;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.28);
+}
+
+/* === Page === */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 40px 48px 64px;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.page-header .eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin: 0 0 12px;
+}
+.page-header h1 {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0 0 12px;
+}
+.page-header p {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* === Stage === */
+.stage {
+  position: relative;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: 56px 48px 48px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(30, 64, 175, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 64, 175, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+  pointer-events: none;
+  z-index: 0;
+}
+.stage-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* === Pipeline SVG === */
+.pipeline-svg {
+  width: 100%;
+  height: 220px;
+  display: block;
+  overflow: visible;
+}
+.pipe-bg {
+  stroke: rgba(30, 64, 175, 0.10);
+  stroke-width: 10;
+  stroke-linecap: round;
+  fill: none;
+}
+.pipe-flow {
+  stroke: url(#flow-grad);
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 8 14;
+  opacity: 0.35;
+}
+.pipe-flow.active {
+  opacity: 1;
+  animation: flow 1.4s linear infinite;
+}
+@keyframes flow {
+  to { stroke-dashoffset: -44; }
+}
+
+/* node rectangles */
+.node-rect {
+  fill: rgba(255,255,255,0.92);
+  stroke: var(--color-border-soft);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.08));
+  transition: all 300ms var(--ease);
+}
+.node-rect.highlight {
+  stroke: var(--color-secondary);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.45));
+}
+.node-rect.active {
+  fill: rgba(59, 130, 246, 0.08);
+  stroke: var(--color-secondary);
+  stroke-width: 2;
+}
+.node-rect.alert-active {
+  fill: rgba(220, 38, 38, 0.06);
+  stroke: var(--severity-critical);
+  stroke-width: 2;
+}
+
+.node-icon-bg {
+  fill: rgba(30, 64, 175, 0.10);
+}
+.node-icon-bg.alert { fill: rgba(220, 38, 38, 0.12); }
+.node-icon {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.node-icon.alert { stroke: var(--severity-critical); }
+.node-label {
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.node-name {
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--color-text);
+}
+
+/* main event particle */
+.particle-main {
+  fill: var(--color-secondary);
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.7));
+}
+.particle-trail {
+  fill: var(--color-secondary);
+  opacity: 0.4;
+}
+
+/* ghost particles (rejected by subscription) */
+.particle-ghost {
+  fill: var(--color-text-muted);
+  opacity: 0;
+}
+
+/* injection burst at Source */
+.inject-burst {
+  fill: none;
+  stroke: var(--color-secondary);
+  stroke-width: 2;
+  opacity: 0;
+}
+
+/* === Alert card (terminal output) === */
+.alert-card-wrap {
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  transform: translate(40px, -50%) scale(0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 450ms var(--ease-spring);
+  z-index: 10;
+}
+.alert-card-wrap.show {
+  transform: translate(0, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.alert-card {
+  width: 280px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 4px rgba(220, 38, 38, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+.alert-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--severity-critical);
+  animation: breathe 2s var(--ease) infinite;
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 2px 0 8px 0 rgba(220, 38, 38, 0.3); }
+  50% { box-shadow: 4px 0 16px 0 rgba(220, 38, 38, 0.55); }
+}
+.alert-card .ac-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.sev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Fira Code', monospace;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--severity-critical);
+}
+.sev-badge::before {
+  content: '▲';
+  font-size: 9px;
+}
+.ac-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+.ac-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(30, 64, 175, 0.08);
+}
+.ac-row:last-of-type { border-bottom: none; }
+.ac-row .k { color: var(--color-text-muted); }
+.ac-row .v { color: var(--color-text); font-family: 'Fira Code', monospace; font-weight: 500; }
+.ac-row .v.amount { color: var(--severity-critical); font-weight: 700; }
+.ac-annotation {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(220, 38, 38, 0.06);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  border-left: 2px solid var(--severity-critical);
+}
+
+/* === Controls === */
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+.btn-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.32);
+  transition: all 200ms var(--ease);
+}
+.btn-play:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(30, 64, 175, 0.40);
+}
+.btn-play:active {
+  transform: translateY(0);
+}
+.btn-play svg { width: 14px; height: 14px; }
+
+.btn-play[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.toggle-loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.toggle-loop input { display: none; }
+.toggle-loop .track {
+  width: 36px; height: 20px;
+  background: var(--color-muted);
+  border-radius: var(--radius-pill);
+  position: relative;
+  transition: background 200ms var(--ease);
+}
+.toggle-loop .track::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 200ms var(--ease);
+}
+.toggle-loop input:checked + .track {
+  background: var(--color-primary);
+}
+.toggle-loop input:checked + .track::after {
+  transform: translateX(16px);
+}
+
+/* step indicator */
+.step-indicator {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-muted);
+  transition: all 300ms var(--ease);
+}
+.step-dot.done { background: var(--color-secondary); }
+.step-dot.active {
+  background: var(--color-primary);
+  transform: scale(1.4);
+  box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.12);
+}
+
+/* === Drawer (node details) === */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.20);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms var(--ease);
+  z-index: 100;
+}
+.drawer-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 420px;
+  max-width: 90vw;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px);
+  border-left: 1px solid var(--color-border-soft);
+  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.12);
+  transform: translateX(100%);
+  transition: transform 320ms var(--ease);
+  z-index: 101;
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+.drawer.show { transform: translateX(0); }
+.drawer-close {
+  position: absolute;
+  top: 16px; right: 20px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 200ms var(--ease);
+}
+.drawer-close:hover {
+  background: var(--color-muted);
+  color: var(--color-text);
+}
+.drawer-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 8px;
+}
+.drawer h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+}
+.drawer .desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 24px;
+}
+.drawer-section {
+  margin-bottom: 20px;
+}
+.drawer-section h4 {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+}
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--color-border-soft);
+}
+.kv .k { color: var(--color-text-muted); }
+.kv .v { color: var(--color-text); font-family: 'Fira Code', monospace; }
+.code-block {
+  background: rgba(30, 64, 175, 0.04);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--color-text);
+  overflow-x: auto;
+  line-height: 1.6;
+}
+.code-block .k { color: var(--color-primary); }
+.code-block .s { color: var(--exec-success); }
+.code-block .n { color: var(--color-accent); }
+
+/* === Steps text below stage === */
+.steps-narration {
+  margin-top: 32px;
+  text-align: center;
+  min-height: 24px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.steps-narration .current {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* === Mobile === */
+@media (max-width: 768px) {
+  .topbar-inner { padding: 12px 16px; gap: 12px; flex-wrap: wrap; }
+  .role-tabs, .nav-link { display: none; }
+  .page { padding: 24px 16px 48px; }
+  .page-header h1 { font-size: 26px; }
+  .stage { padding: 32px 16px 24px; }
+  .pipeline-svg { height: 180px; }
+  .alert-card-wrap {
+    position: relative;
+    top: auto; right: auto;
+    transform: scale(0.85);
+    margin: 24px auto 0;
+  }
+  .alert-card-wrap.show {
+    transform: scale(1);
+  }
+  .drawer { width: 100vw; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      A-Solid Observe
+    </div>
+    <div class="spacer"></div>
+    <nav class="role-tabs" aria-label="角色导航">
+      <button class="role-tab" type="button">配置</button>
+      <button class="role-tab" type="button">告警</button>
+      <button class="role-tab active" type="button">大盘</button>
+    </nav>
+    <a class="nav-link" href="c1-dashboard.html">← 返回大盘</a>
+  </div>
+</header>
+
+<main class="page">
+
+  <header class="page-header">
+    <p class="eyebrow">Live Demo · 招牌演示</p>
+    <h1>一个事件，如何变成一条精准告警</h1>
+    <p>下面演示一条订单事件，从 CDC 源注入，经过 Subscription 条件过滤，被 Pipeline 判定命中，最终产出一条 CRITICAL 告警的完整旅程。</p>
+  </header>
+
+  <section class="stage">
+    <div class="stage-inner">
+
+      <svg class="pipeline-svg" viewBox="0 0 1000 220" preserveAspectRatio="xMidYMid meet" role="img" aria-label="事件从 Source 流经 Subscription、Pipeline 到 Alert 的可视化管道">
+        <defs>
+          <linearGradient id="flow-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#1E40AF" />
+            <stop offset="50%" stop-color="#3B82F6" />
+            <stop offset="100%" stop-color="#DC2626" />
+          </linearGradient>
+
+          <!-- main path for particle to follow -->
+          <path id="main-path" d="M 125 110 L 875 110" fill="none" />
+        </defs>
+
+        <!-- background pipes -->
+        <line class="pipe-bg" x1="125" y1="110" x2="375" y2="110" />
+        <line class="pipe-bg" x1="375" y1="110" x2="625" y2="110" />
+        <line class="pipe-bg" x1="625" y1="110" x2="875" y2="110" />
+
+        <!-- flow lines (animated dashes) -->
+        <line id="flow-1" class="pipe-flow" x1="125" y1="110" x2="375" y2="110" />
+        <line id="flow-2" class="pipe-flow" x1="375" y1="110" x2="625" y2="110" />
+        <line id="flow-3" class="pipe-flow" x1="625" y1="110" x2="875" y2="110" />
+
+        <!-- Nodes -->
+        <!-- Source -->
+        <g class="node-group" data-node="source" style="cursor: pointer;">
+          <rect class="node-rect" id="rect-source" x="40" y="60" width="170" height="100" rx="14" />
+          <circle class="node-icon-bg" cx="125" cy="92" r="16" />
+          <g transform="translate(115, 82)">
+            <path class="node-icon" d="M10 3 a7 2.5 0 0 0 0 5 a7 2.5 0 0 0 0 -5 M3 5 v9 a7 2.5 0 0 0 14 0 v-9 M3 9.5 a7 2.5 0 0 0 14 0" />
+          </g>
+          <text class="node-label" x="125" y="128" text-anchor="middle">① Source</text>
+          <text class="node-name" x="125" y="146" text-anchor="middle">CDC · orders 表</text>
+        </g>
+
+        <!-- Subscription -->
+        <g class="node-group" data-node="subscription" style="cursor: pointer;">
+          <rect class="node-rect" id="rect-subscription" x="290" y="60" width="170" height="100" rx="14" />
+          <circle class="node-icon-bg" cx="375" cy="92" r="16" />
+          <g transform="translate(365, 82)">
+            <path class="node-icon" d="M3 5 h14 M5 10 h10 M7 15 h6" />
+          </g>
+          <text class="node-label" x="375" y="128" text-anchor="middle">② Subscription</text>
+          <text class="node-name" x="375" y="146" text-anchor="middle">高额订单监控</text>
+        </g>
+
+        <!-- Pipeline -->
+        <g class="node-group" data-node="pipeline" style="cursor: pointer;">
+          <rect class="node-rect" id="rect-pipeline" x="540" y="60" width="170" height="100" rx="14" />
+          <circle class="node-icon-bg" cx="625" cy="92" r="16" />
+          <g transform="translate(615, 82)">
+            <circle class="node-icon" cx="10" cy="10" r="3" />
+            <path class="node-icon" d="M10 2 v3 M10 15 v3 M2 10 h3 M15 10 h3 M4.5 4.5 l2 2 M13.5 13.5 l2 2 M4.5 15.5 l2 -2 M13.5 6.5 l2 -2" />
+          </g>
+          <text class="node-label" x="625" y="128" text-anchor="middle">③ Pipeline</text>
+          <text class="node-name" x="625" y="146" text-anchor="middle">check: 高额订单</text>
+        </g>
+
+        <!-- Alert -->
+        <g class="node-group" data-node="alert" style="cursor: pointer;">
+          <rect class="node-rect" id="rect-alert" x="790" y="60" width="170" height="100" rx="14" />
+          <circle class="node-icon-bg alert" cx="875" cy="92" r="16" />
+          <g transform="translate(865, 82)">
+            <path class="node-icon alert" d="M10 2 L19 18 L1 18 Z" />
+            <path class="node-icon alert" d="M10 8 v5" />
+            <circle class="node-icon alert" cx="10" cy="16" r="0.5" fill="currentColor" />
+          </g>
+          <text class="node-label" x="875" y="128" text-anchor="middle" style="fill: var(--severity-critical);">④ Alert</text>
+          <text class="node-name" x="875" y="146" text-anchor="middle">触发告警</text>
+        </g>
+
+        <!-- injection burst at Source -->
+        <circle class="inject-burst" id="inject-burst" cx="125" cy="110" r="0" />
+
+        <!-- ghost particles (rejected) -->
+        <circle class="particle-ghost" id="ghost-1" cx="375" cy="110" r="4" />
+        <circle class="particle-ghost" id="ghost-2" cx="375" cy="110" r="4" />
+        <circle class="particle-ghost" id="ghost-3" cx="375" cy="110" r="4" />
+
+        <!-- main event particle -->
+        <circle class="particle-trail" id="particle-trail" cx="125" cy="110" r="3" opacity="0" />
+        <circle class="particle-main" id="particle-main" cx="125" cy="110" r="6" opacity="0" />
+      </svg>
+
+      <!-- Alert card output -->
+      <div class="alert-card-wrap" id="alert-card">
+        <div class="alert-card">
+          <div class="ac-head">
+            <span class="sev-badge">CRITICAL</span>
+            <p class="ac-title">高额订单告警</p>
+          </div>
+          <div class="ac-row">
+            <span class="k">fingerprint</span>
+            <span class="v">a1b2c3d4e5f6</span>
+          </div>
+          <div class="ac-row">
+            <span class="k">labels.entity</span>
+            <span class="v">orders</span>
+          </div>
+          <div class="ac-row">
+            <span class="k">team</span>
+            <span class="v">payment</span>
+          </div>
+          <div class="ac-row">
+            <span class="k">startsAt</span>
+            <span class="v">14:28:01</span>
+          </div>
+          <div class="ac-annotation">
+            金额 <strong style="color: var(--severity-critical);">¥58,200</strong> 超过阈值 ¥10,000
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- step narration -->
+    <div class="steps-narration" id="narration">
+      点击 <strong>「▶ 演示模式」</strong> 开始播放
+    </div>
+
+    <!-- step indicator dots -->
+    <div class="step-indicator" aria-hidden="true">
+      <span class="step-dot" id="dot-0"></span>
+      <span class="step-dot" id="dot-1"></span>
+      <span class="step-dot" id="dot-2"></span>
+      <span class="step-dot" id="dot-3"></span>
+      <span class="step-dot" id="dot-4"></span>
+    </div>
+
+    <!-- controls -->
+    <div class="controls">
+      <button class="btn-play" id="btn-play" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        演示模式
+      </button>
+      <label class="toggle-loop">
+        <input type="checkbox" id="loop-toggle" />
+        <span class="track"></span>
+        <span>自动循环</span>
+      </label>
+    </div>
+  </section>
+
+</main>
+
+<!-- Drawer -->
+<div class="drawer-backdrop" id="drawer-bd"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="drawer-close" id="drawer-close" type="button" aria-label="关闭">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+  <div id="drawer-content"></div>
+</aside>
+
+<script>
+// ============================================================
+// Mock data — 字段照抄真实接口
+// POST /api/v1/events → eventId
+// GET  /api/v1/alerts/{id} → { severity, fingerprint, labels, annotations, startsAt }
+// ============================================================
+const nodes = {
+  source: {
+    eyebrow: 'Source · 数据源',
+    title: 'CDC · orders 表',
+    desc: '订阅业务库 orders 表的变更事件（INSERT/UPDATE），实时捕获流入。',
+    sections: [
+      { h: '配置', kvs: [
+        ['sourceType', 'CDC'],
+        ['mq', 'kafka://prod-bus'],
+        ['topic', 'db.orders'],
+        ['opTypes', 'INSERT, UPDATE']
+      ]},
+      { h: '今日', kvs: [
+        ['事件数', '1,284'],
+        ['平均延迟', '120 ms']
+      ]}
+    ]
+  },
+  subscription: {
+    eyebrow: 'Subscription · 订阅',
+    title: '高额订单监控',
+    desc: '从 orders 流中筛出金额超过 10,000 的订单事件，分发给绑定的 pipeline。',
+    sections: [
+      { h: '绑定 Pipeline', kvs: [
+        ['pipelineIds[0]', '高额订单告警 v3'],
+        ['pipelineIds[1]', '风控规则引擎 v1']
+      ]},
+      { h: '条件 (fieldFilter)', code:
+'{\n' +
+'  "type": "AND",\n' +
+'  "children": [\n' +
+'    { "type": "Compare",\n' +
+'      "field": "amount",\n' +
+'      "op": "GT",\n' +
+'      "value": <span class="n">10000</span> },\n' +
+'    { "type": "Compare",\n' +
+'      "field": "status",\n' +
+'      "op": "IN",\n' +
+'      "value": [<span class="s">"PAID"</span>] }\n' +
+'  ]\n' +
+'}'
+      },
+      { h: '今日', kvs: [
+        ['命中数', '312'],
+        ['过滤掉', '972']
+      ]}
+    ]
+  },
+  pipeline: {
+    eyebrow: 'Pipeline · 处理',
+    title: 'check: 高额订单告警 v3',
+    desc: '单节点 check pipeline，比较订单金额是否超过阈值，命中即触发 CRITICAL 告警。',
+    sections: [
+      { h: '版本', kvs: [
+        ['currentVersion', 'v3'],
+        ['status', 'PUBLISHED'],
+        ['definitionHash', '9f2a...c1e7']
+      ]},
+      { h: '定义 (definition)', code:
+'{\n' +
+'  "nodes": [\n' +
+'    { "type": <span class="s">"check"</span>,\n' +
+'      "name": <span class="s">"check-amount"</span>,\n' +
+'      "params": {\n' +
+'        "field": <span class="s">"amount"</span>,\n' +
+'        "op": <span class="s">"GT"</span>,\n' +
+'        "threshold": <span class="n">10000</span> } }\n' +
+'  ],\n' +
+'  "emit": <span class="s">"alert"</span>\n' +
+'}'
+      },
+      { h: '今日', kvs: [
+        ['执行次数', '312'],
+        ['成功率', '99.4%']
+      ]}
+    ]
+  },
+  alert: {
+    eyebrow: 'Alert · 触发的告警',
+    title: '高额订单告警',
+    desc: '订单 ¥58,200 命中规则，触发 CRITICAL 告警，进入值班处理队列。',
+    sections: [
+      { h: '元信息', kvs: [
+        ['severity', 'CRITICAL'],
+        ['status', 'FIRING'],
+        ['fingerprint', 'a1b2c3d4e5f6'],
+        ['startsAt', '2026-07-19 14:28:01'],
+        ['dedupCount', '5']
+      ]},
+      { h: 'labels', kvs: [
+        ['entity', 'orders'],
+        ['team', 'payment'],
+        ['pipeline', '高额订单告警 v3']
+      ]},
+      { h: 'annotations', code:
+'<span class="k">summary</span>: 高额订单告警\n' +
+'<span class="k">description</span>: 订单 #ORD-88210\n' +
+'  金额 <span class="n">¥58,200</span> 超阈值\n' +
+'<span class="k">runbook</span>: /runbooks/high-amount'
+      }
+    ]
+  }
+};
+
+// ============================================================
+// Drawer
+// ============================================================
+const drawer = document.getElementById('drawer');
+const drawerBd = document.getElementById('drawer-bd');
+const drawerContent = document.getElementById('drawer-content');
+const drawerClose = document.getElementById('drawer-close');
+
+function openDrawer(key) {
+  const n = nodes[key];
+  if (!n) return;
+  let html = `
+    <p class="drawer-eyebrow">${n.eyebrow}</p>
+    <h3>${n.title}</h3>
+    <p class="desc">${n.desc}</p>
+  `;
+  n.sections.forEach(s => {
+    html += `<div class="drawer-section"><h4>${s.h}</h4>`;
+    if (s.kvs) {
+      s.kvs.forEach(([k, v]) => {
+        html += `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+      });
+    }
+    if (s.code) {
+      html += `<pre class="code-block">${s.code}</pre>`;
+    }
+    html += `</div>`;
+  });
+  drawerContent.innerHTML = html;
+  drawer.classList.add('show');
+  drawerBd.classList.add('show');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+function closeDrawer() {
+  drawer.classList.remove('show');
+  drawerBd.classList.remove('show');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+drawerClose.addEventListener('click', closeDrawer);
+drawerBd.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDrawer();
+});
+document.querySelectorAll('.node-group').forEach(g => {
+  g.addEventListener('click', () => openDrawer(g.dataset.node));
+  g.addEventListener('mouseenter', () => {
+    const rect = g.querySelector('.node-rect');
+    if (!rect.classList.contains('active') && !rect.classList.contains('alert-active')) {
+      rect.classList.add('highlight');
+    }
+  });
+  g.addEventListener('mouseleave', () => {
+    g.querySelector('.node-rect').classList.remove('highlight');
+  });
+});
+
+// ============================================================
+// Animation playback
+// ============================================================
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const particleMain = document.getElementById('particle-main');
+const particleTrail = document.getElementById('particle-trail');
+const ghosts = [
+  document.getElementById('ghost-1'),
+  document.getElementById('ghost-2'),
+  document.getElementById('ghost-3')
+];
+const injectBurst = document.getElementById('inject-burst');
+const alertCard = document.getElementById('alert-card');
+const btnPlay = document.getElementById('btn-play');
+const loopToggle = document.getElementById('loop-toggle');
+const narration = document.getElementById('narration');
+const dots = [0,1,2,3,4].map(i => document.getElementById('dot-' + i));
+const flows = [
+  document.getElementById('flow-1'),
+  document.getElementById('flow-2'),
+  document.getElementById('flow-3')
+];
+const rects = {
+  source: document.getElementById('rect-source'),
+  subscription: document.getElementById('rect-subscription'),
+  pipeline: document.getElementById('rect-pipeline'),
+  alert: document.getElementById('rect-alert')
+};
+
+// path coordinates (must match SVG main-path)
+const PATH_START = 125;
+const PATH_END = 875;
+const NODE_X = { source: 125, subscription: 375, pipeline: 625, alert: 875 };
+
+function setNarration(html) {
+  narration.innerHTML = html;
+}
+
+function setDot(step) {
+  dots.forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i < step) d.classList.add('done');
+    else if (i === step) d.classList.add('active');
+  });
+}
+
+function resetStage() {
+  // hide particle
+  particleMain.style.opacity = '0';
+  particleMain.setAttribute('cx', PATH_START);
+  particleTrail.style.opacity = '0';
+  particleTrail.setAttribute('cx', PATH_START);
+
+  // reset ghosts
+  ghosts.forEach(g => {
+    g.style.opacity = '0';
+    g.setAttribute('cx', NODE_X.subscription);
+    g.setAttribute('cy', 110);
+  });
+
+  // reset flows
+  flows.forEach(f => f.classList.remove('active'));
+
+  // reset rects
+  Object.values(rects).forEach(r => {
+    r.classList.remove('active', 'alert-active', 'highlight');
+  });
+
+  // hide alert card
+  alertCard.classList.remove('show');
+
+  // reset inject burst
+  injectBurst.style.opacity = '0';
+  injectBurst.setAttribute('r', '0');
+
+  setDot(-1);
+  setNarration('点击 <strong>「▶ 演示模式」</strong> 开始播放');
+}
+
+// animate particle along x using requestAnimationFrame
+function animateParticle(fromX, toX, duration, onUpdate, onDone) {
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = t < 0.5
+      ? 2 * t * t
+      : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease in-out
+    const x = fromX + (toX - fromX) * eased;
+    onUpdate(x, t);
+    if (t < 1) requestAnimationFrame(tick);
+    else onDone && onDone();
+  }
+  if (reduceMotion) {
+    onUpdate(toX, 1);
+    onDone && onDone();
+  } else {
+    requestAnimationFrame(tick);
+  }
+}
+
+function wait(ms) {
+  if (reduceMotion) return Promise.resolve();
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function play() {
+  btnPlay.disabled = true;
+  resetStage();
+  await wait(200);
+
+  // === Step 0: injection at Source ===
+  setDot(0);
+  setNarration('<span class="current">① 事件注入</span> · 一个 CDC 事件从 orders 表流入 Source');
+  rects.source.classList.add('active');
+  particleMain.style.opacity = '1';
+  particleTrail.style.opacity = '0.5';
+
+  if (!reduceMotion) {
+    // injection burst
+    injectBurst.style.transition = 'none';
+    injectBurst.setAttribute('r', '0');
+    injectBurst.style.opacity = '1';
+    injectBurst.getBoundingClientRect(); // reflow
+    injectBurst.style.transition = 'all 600ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+    injectBurst.setAttribute('r', '24');
+    setTimeout(() => { injectBurst.style.opacity = '0'; }, 400);
+  }
+  await wait(700);
+
+  // === Step 1: flow to Subscription ===
+  setDot(1);
+  setNarration('<span class="current">② 流向 Subscription</span> · 事件沿管道流向条件过滤器');
+  flows[0].classList.add('active');
+  await new Promise(resolve => {
+    animateParticle(PATH_START, NODE_X.subscription, 800, (x) => {
+      particleMain.setAttribute('cx', x);
+      particleTrail.setAttribute('cx', x - 8);
+    }, resolve);
+  });
+  flows[0].classList.remove('active');
+  rects.source.classList.remove('active');
+  rects.subscription.classList.add('active');
+  await wait(300);
+
+  // === Step 2: filtering at Subscription (ghosts rejected) ===
+  setNarration('<span class="current">② 条件过滤</span> · 2-3 个不满足条件的事件被剔除，主事件通过');
+  // launch ghosts
+  ghosts.forEach((g, i) => {
+    if (reduceMotion) return;
+    g.style.transition = 'none';
+    g.setAttribute('cx', NODE_X.subscription);
+    g.setAttribute('cy', 110);
+    g.style.opacity = '0.6';
+    g.getBoundingClientRect();
+    const angle = -60 + i * 60; // spread upward and downward
+    const rad = angle * Math.PI / 180;
+    const dx = Math.cos(rad) * 30;
+    const dy = Math.sin(rad) * 40;
+    g.style.transition = 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+    g.setAttribute('cx', NODE_X.subscription + dx);
+    g.setAttribute('cy', 110 + dy);
+    setTimeout(() => { g.style.opacity = '0'; }, 400);
+  });
+  await wait(700);
+
+  // main particle continues
+  flows[1].classList.add('active');
+  await new Promise(resolve => {
+    animateParticle(NODE_X.subscription, NODE_X.pipeline, 800, (x) => {
+      particleMain.setAttribute('cx', x);
+      particleTrail.setAttribute('cx', x - 8);
+    }, resolve);
+  });
+  flows[1].classList.remove('active');
+  rects.subscription.classList.remove('active');
+  rects.pipeline.classList.add('active');
+  await wait(200);
+
+  // === Step 3: pipeline judges ===
+  setDot(2);
+  setNarration('<span class="current">③ Pipeline 判定</span> · check 节点比较 amount > 10000，命中');
+  // pulse the pipeline rect
+  if (!reduceMotion) {
+    rects.pipeline.style.transition = 'filter 200ms';
+    let pulses = 0;
+    const pulseTimer = setInterval(() => {
+      rects.pipeline.style.filter = pulses % 2 === 0
+        ? 'drop-shadow(0 0 16px rgba(59, 130, 246, 0.7))'
+        : 'drop-shadow(0 6px 16px rgba(15, 23, 42, 0.08))';
+      pulses++;
+      if (pulses >= 4) {
+        clearInterval(pulseTimer);
+        rects.pipeline.style.filter = '';
+      }
+    }, 200);
+  }
+  await wait(900);
+
+  // === Step 4: flow to Alert, explode into card ===
+  setDot(3);
+  setNarration('<span class="current">④ 产出告警</span> · 事件到达末端，炸开成一条 CRITICAL 告警');
+  flows[2].classList.add('active');
+  await new Promise(resolve => {
+    animateParticle(NODE_X.pipeline, NODE_X.alert, 600, (x) => {
+      particleMain.setAttribute('cx', x);
+      particleTrail.setAttribute('cx', x - 8);
+    }, resolve);
+  });
+
+  // explode: hide particle, show alert card
+  particleMain.style.opacity = '0';
+  particleTrail.style.opacity = '0';
+  rects.pipeline.classList.remove('active');
+  rects.alert.classList.add('alert-active');
+
+  // radial burst at alert position
+  if (!reduceMotion) {
+    injectBurst.style.transition = 'none';
+    injectBurst.setAttribute('cx', NODE_X.alert);
+    injectBurst.setAttribute('r', '0');
+    injectBurst.style.opacity = '1';
+    injectBurst.style.stroke = '#DC2626';
+    injectBurst.getBoundingClientRect();
+    injectBurst.style.transition = 'all 700ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+    injectBurst.setAttribute('r', '40');
+    setTimeout(() => { injectBurst.style.opacity = '0'; }, 500);
+  }
+
+  alertCard.classList.add('show');
+  setDot(4);
+  setNarration('<span class="current">✓ 完成</span> · 一条 CRITICAL 告警已产出并进入值班队列');
+  await wait(800);
+
+  btnPlay.disabled = false;
+
+  if (loopToggle.checked && !reduceMotion) {
+    await wait(1500);
+    play();
+  }
+}
+
+btnPlay.addEventListener('click', play);
+
+// keyboard: space to play
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !btnPlay.disabled && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    play();
+  }
+});
+
+resetStage();
+</script>
+</body>
+</html>

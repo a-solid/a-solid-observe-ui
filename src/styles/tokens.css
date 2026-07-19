@@ -1,0 +1,78 @@
+/* === Design tokens — shared across all pages (1:1 from frontend-demo) === */
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-foreground: #1E3A8A;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+  --color-ring: #1E40AF;
+  --color-destructive: #DC2626;
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --status-firing: #DC2626;
+  --status-resolved: #16A34A;
+
+  --exec-success: #16A34A;
+  --exec-short: #D97706;
+  --exec-failed: #DC2626;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+.num, .mono {
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+}

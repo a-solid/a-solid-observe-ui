@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 告警详情</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-foreground: #1E3A8A;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+  --color-ring: #1E40AF;
+  --color-destructive: #DC2626;
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --status-firing: #DC2626;
+  --status-resolved: #16A34A;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+  --shadow-xl: 0 20px 40px rgba(15, 23, 42, 0.15);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+  padding-bottom: 96px;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: '';
+  position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+
+.namespace-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: all 200ms var(--ease);
+}
+.namespace-switch:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border); }
+.namespace-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--status-resolved);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
+
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  border: none;
+  background: transparent;
+  text-decoration: none;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.28);
+}
+
+/* === Breadcrumb === */
+.breadcrumb {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-2xl) 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.breadcrumb a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 200ms var(--ease);
+}
+.breadcrumb a:hover { color: var(--color-primary); }
+.breadcrumb svg { width: 12px; height: 12px; opacity: 0.6; }
+
+/* === Layout === */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-2xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* === Hero: Source Tracing Pipeline === */
+.trace-strip {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-xl) var(--space-2xl);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+.trace-strip::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 50%; height: 200%;
+  background: radial-gradient(ellipse 60% 50% at center, rgba(220, 38, 38, 0.06), transparent 60%);
+  pointer-events: none;
+}
+.trace-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+  position: relative;
+}
+.trace-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 4px 0;
+}
+.trace-headline {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sev-badge-large {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: rgba(220, 38, 38, 0.10);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--severity-critical);
+}
+.sev-badge-large::before {
+  content: '▲';
+  font-size: 10px;
+}
+.trace-fp {
+  font-family: 'Fira Code', monospace;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.trace-svg-wrap {
+  position: relative;
+  padding: 12px 0 16px;
+}
+.trace-svg { width: 100%; height: auto; display: block; }
+
+.pipeline-node {
+  cursor: pointer;
+}
+.pipeline-node .node-chip-bg {
+  fill: rgba(255,255,255,0.92);
+  stroke: var(--color-border);
+  stroke-width: 1.4;
+  transition: all 200ms var(--ease);
+}
+.pipeline-node:hover .node-chip-bg {
+  fill: #fff;
+  stroke: var(--color-secondary);
+  filter: drop-shadow(0 6px 14px rgba(30, 64, 175, 0.18));
+}
+.pipeline-node.alert-node .node-chip-bg {
+  stroke: var(--severity-critical);
+  stroke-width: 1.8;
+}
+.pipeline-node.active .node-chip-bg {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.pipeline-link {
+  fill: none;
+  stroke: rgba(30, 64, 175, 0.18);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+  animation: dashFlow 18s linear infinite;
+}
+@keyframes dashFlow {
+  to { stroke-dashoffset: -200; }
+}
+.pipeline-link-energized {
+  stroke: url(#flowGradient);
+  stroke-width: 2.6;
+  stroke-dasharray: 8 6;
+  animation: dashFlowFast 6s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.45));
+}
+@keyframes dashFlowFast {
+  to { stroke-dashoffset: -200; }
+}
+
+.flow-particle {
+  fill: var(--severity-critical);
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.6));
+}
+
+/* === Meta + Evidence + Timeline Grid === */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--space-xl);
+}
+.detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.section-card {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg) var(--space-xl);
+  box-shadow: var(--shadow-sm);
+}
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-md) 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title svg { width: 14px; height: 14px; }
+
+/* meta */
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md) var(--space-xl);
+}
+.meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.meta-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.meta-value {
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 500;
+}
+.meta-value.mono { font-family: 'Fira Code', monospace; }
+
+.labels-block {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--color-border);
+}
+.labels-list, .annotations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-family: 'Fira Code', monospace;
+}
+.label-key { color: var(--color-secondary); }
+.label-arrow { color: var(--color-text-muted); }
+.label-val { color: var(--color-text); }
+.annotation-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.5);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.annotation-key {
+  font-family: 'Fira Code', monospace;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+.annotation-val { color: var(--color-text); }
+
+/* evidence */
+.evidence-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+.view-toggle {
+  display: inline-flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.view-btn {
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 200ms var(--ease);
+  font-family: inherit;
+}
+.view-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.json-view {
+  background: #0F172A;
+  border-radius: 10px;
+  padding: var(--space-md);
+  font-family: 'Fira Code', monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #CBD5E1;
+  overflow-x: auto;
+  position: relative;
+}
+.json-view .k { color: #93C5FD; }
+.json-view .s { color: #86EFAC; }
+.json-view .n { color: #FBBF24; }
+.json-view .b { color: #F87171; }
+.json-copy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #CBD5E1;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 200ms var(--ease);
+}
+.json-copy:hover { background: rgba(255,255,255,0.15); }
+
+.table-view {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table-view th, .table-view td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.table-view th {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  background: rgba(255,255,255,0.4);
+}
+.table-view td:first-child { color: var(--color-text-muted); }
+.table-view td .ok { color: var(--severity-critical); font-weight: 600; }
+
+.evidence-narrative {
+  margin-top: var(--space-md);
+  padding: 10px 14px;
+  background: rgba(220, 38, 38, 0.06);
+  border-left: 3px solid var(--severity-critical);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.evidence-narrative .num { color: var(--severity-critical); font-weight: 600; }
+
+/* timeline */
+.timeline {
+  position: relative;
+  padding-left: 28px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px; top: 8px; bottom: 8px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--severity-critical), var(--color-secondary), var(--status-resolved));
+  border-radius: 2px;
+}
+.tl-item {
+  position: relative;
+  padding: 10px 0 14px 0;
+}
+.tl-item::before {
+  content: '';
+  position: absolute;
+  left: -28px; top: 14px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--color-secondary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+.tl-item.start::before { border-color: var(--severity-critical); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18); }
+.tl-item.ack::before { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18); }
+.tl-item.resolved::before { border-color: var(--status-resolved); box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18); }
+.tl-item.dedup::before {
+  width: 10px; height: 10px;
+  border-color: var(--color-text-muted);
+  background: var(--color-text-muted);
+  top: 18px;
+  left: -25px;
+  box-shadow: none;
+}
+.tl-time {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+.tl-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin: 0;
+}
+.tl-title .badge {
+  display: inline-block;
+  padding: 1px 7px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+.tl-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* === Bottom Action Bar === */
+.action-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255,255,255,0.85);
+  border-top: 1px solid var(--color-border-soft);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
+}
+.action-bar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-2xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.action-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.action-info .sev-pill {
+  padding: 4px 10px;
+  background: rgba(220, 38, 38, 0.10);
+  color: var(--severity-critical);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.action-info .sev-pill::before { content: '▲'; font-size: 9px; }
+.action-info-fp {
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.action-info-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn svg { width: 14px; height: 14px; }
+.btn-secondary {
+  background: rgba(255,255,255,0.8);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+.btn-secondary:hover {
+  background: #fff;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.btn-warn {
+  background: rgba(217, 119, 6, 0.10);
+  color: var(--color-accent);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+.btn-warn:hover {
+  background: rgba(217, 119, 6, 0.18);
+  transform: translateY(-1px);
+}
+.btn-primary {
+  background: var(--status-resolved);
+  color: #fff;
+  padding: 10px 22px;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+.btn-primary:hover {
+  background: #15803D;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.4);
+}
+
+/* === Toast === */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 300ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast svg { width: 16px; height: 16px; color: var(--status-resolved); }
+
+@media (max-width: 1024px) {
+  .detail-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .page { padding: var(--space-md); }
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .trace-strip { padding: var(--space-lg); }
+  .namespace-switch { display: none; }
+  .meta-grid { grid-template-columns: 1fr; }
+  .breadcrumb { padding: var(--space-sm) var(--space-md) 0; }
+  .action-bar-inner { padding: var(--space-md); flex-wrap: wrap; }
+  .action-info { width: 100%; order: 2; }
+  .action-info-fp { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="c1-dashboard.html" class="brand">
+      <span class="brand-mark"></span>
+      <span>A-Solid Observe</span>
+    </a>
+    <div class="namespace-switch" title="切换 namespace">
+      <span class="namespace-dot"></span>
+      <span class="mono">ops</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <nav class="role-tabs">
+      <a href="c1-dashboard.html" class="role-tab">大盘</a>
+      <a href="b1-alerts.html" class="role-tab active">告警</a>
+      <a href="a1-pipelines.html" class="role-tab">配置</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  <a href="b1-alerts.html">告警列表</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+  <span class="mono">high-amount-order</span>
+</div>
+
+<main class="page">
+  <!-- Hero: Source Tracing Pipeline Strip -->
+  <section class="trace-strip">
+    <div class="trace-head">
+      <div>
+        <p class="trace-title">溯源链路 · 这条告警从哪来</p>
+        <h1 class="trace-headline">
+          <span class="sev-badge-large">CRITICAL</span>
+          <span class="trace-fp">high-amount-order</span>
+        </h1>
+      </div>
+      <div style="display:flex; align-items:center; gap: 10px; font-size: 12px; color: var(--color-text-muted);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        startsAt <strong style="color: var(--color-text); font-family: 'Fira Code', monospace; font-weight: 500;">2026-07-19 14:32:18</strong>
+        · 持续 <strong style="color: var(--severity-critical); font-family: 'Fira Code', monospace; font-weight: 600;">2m 47s</strong>
+      </div>
+    </div>
+
+    <div class="trace-svg-wrap">
+      <svg class="trace-svg" viewBox="0 0 1000 180" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#1E40AF"/>
+            <stop offset="50%" stop-color="#3B82F6"/>
+            <stop offset="100%" stop-color="#DC2626"/>
+          </linearGradient>
+          <linearGradient id="chipBg" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="100%" stop-color="#F8FAFC"/>
+          </linearGradient>
+          <filter id="chipShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.06"/>
+          </filter>
+        </defs>
+
+        <!-- Background links (always visible) -->
+        <path class="pipeline-link" d="M 145 90 L 355 90" />
+        <path class="pipeline-link" d="M 395 90 L 605 90" />
+        <path class="pipeline-link" d="M 645 90 L 855 90" />
+
+        <!-- Energized animated overlay (the alert is firing) -->
+        <path class="pipeline-link-energized" d="M 145 90 L 355 90" />
+        <path class="pipeline-link-energized" d="M 395 90 L 605 90" />
+        <path class="pipeline-link-energized" d="M 645 90 L 855 90" />
+
+        <!-- Flow particle traveling -->
+        <circle class="flow-particle" r="4" cx="250" cy="90">
+          <animateMotion dur="3.6s" repeatCount="indefinite" path="M -105 0 L 710 0"/>
+          <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="3.6s" repeatCount="indefinite"/>
+        </circle>
+
+        <!-- Node: Source -->
+        <g class="pipeline-node" data-node="source" transform="translate(80 30)">
+          <rect class="node-chip-bg" width="130" height="120" rx="14" filter="url(#chipShadow)"/>
+          <g transform="translate(65 30)">
+            <circle cx="0" cy="0" r="22" fill="rgba(30,64,175,0.10)" stroke="rgba(30,64,175,0.25)" stroke-width="1.4"/>
+            <g transform="translate(-12 -12)" fill="none" stroke="#1E40AF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0"/>
+              <path d="M3 18c3-4 9-4 12 0c3-4 9-4 12 0"/>
+            </g>
+          </g>
+          <text x="65" y="78" text-anchor="middle" font-family="Fira Sans" font-size="10" font-weight="600" fill="#64748B" letter-spacing="0.06em">SOURCE</text>
+          <text x="65" y="96" text-anchor="middle" font-family="Fira Sans" font-size="13" font-weight="600" fill="#0F172A">CDC: orders</text>
+          <text x="65" y="112" text-anchor="middle" font-family="Fira Code" font-size="10" fill="#64748B">INSERT</text>
+        </g>
+
+        <!-- Node: Subscription -->
+        <g class="pipeline-node" data-node="subscription" transform="translate(330 30)">
+          <rect class="node-chip-bg" width="130" height="120" rx="14" filter="url(#chipShadow)"/>
+          <g transform="translate(65 30)">
+            <circle cx="0" cy="0" r="22" fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.3)" stroke-width="1.4"/>
+            <g transform="translate(-12 -12)" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16v16H4z"/>
+              <path d="M4 9h16M9 4v16"/>
+            </g>
+          </g>
+          <text x="65" y="78" text-anchor="middle" font-family="Fira Sans" font-size="10" font-weight="600" fill="#64748B" letter-spacing="0.06em">SUBSCRIPTION</text>
+          <text x="65" y="96" text-anchor="middle" font-family="Fira Sans" font-size="13" font-weight="600" fill="#0F172A">高额订单监控</text>
+          <text x="65" y="112" text-anchor="middle" font-family="Fira Code" font-size="10" fill="#64748B">amount > 10000</text>
+        </g>
+
+        <!-- Node: Pipeline -->
+        <g class="pipeline-node" data-node="pipeline" transform="translate(580 30)">
+          <rect class="node-chip-bg" width="130" height="120" rx="14" filter="url(#chipShadow)"/>
+          <g transform="translate(65 30)">
+            <circle cx="0" cy="0" r="22" fill="rgba(30,64,175,0.12)" stroke="rgba(30,64,175,0.3)" stroke-width="1.4"/>
+            <g transform="translate(-12 -12)" fill="none" stroke="#1E40AF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="6" r="2.5"/>
+              <circle cx="18" cy="6" r="2.5"/>
+              <circle cx="6" cy="18" r="2.5"/>
+              <circle cx="18" cy="18" r="2.5"/>
+              <path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/>
+            </g>
+          </g>
+          <text x="65" y="78" text-anchor="middle" font-family="Fira Sans" font-size="10" font-weight="600" fill="#64748B" letter-spacing="0.06em">PIPELINE · v3</text>
+          <text x="65" y="96" text-anchor="middle" font-family="Fira Sans" font-size="13" font-weight="600" fill="#0F172A">高额订单告警</text>
+          <text x="65" y="112" text-anchor="middle" font-family="Fira Code" font-size="10" fill="#64748B">threshold: 10000</text>
+        </g>
+
+        <!-- Node: Alert (this one) -->
+        <g class="pipeline-node alert-node active" data-node="alert" transform="translate(830 30)">
+          <rect class="node-chip-bg" width="130" height="120" rx="14" filter="url(#chipShadow)"/>
+          <!-- severity ring -->
+          <circle cx="65" cy="30" r="22" fill="rgba(220,38,38,0.12)" stroke="rgba(220,38,38,0.4)" stroke-width="1.6">
+            <animate attributeName="r" values="22;24;22" dur="2.4s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="1;0.5;1" dur="2.4s" repeatCount="indefinite"/>
+          </circle>
+          <g transform="translate(65 30)">
+            <path d="M 0 -10 L 10 8 L -10 8 Z" fill="#DC2626" opacity="0.95"/>
+            <text x="0" y="5" text-anchor="middle" font-family="Fira Sans" font-size="11" font-weight="700" fill="#fff">!</text>
+          </g>
+          <text x="65" y="78" text-anchor="middle" font-family="Fira Sans" font-size="10" font-weight="600" fill="#DC2626" letter-spacing="0.06em">ALERT · 本条</text>
+          <text x="65" y="96" text-anchor="middle" font-family="Fira Sans" font-size="13" font-weight="600" fill="#0F172A">CRITICAL · FIRING</text>
+          <text x="65" y="112" text-anchor="middle" font-family="Fira Code" font-size="10" fill="#64748B">dedup × 3</text>
+        </g>
+
+      </svg>
+    </div>
+  </section>
+
+  <!-- Detail grid -->
+  <div class="detail-grid">
+    <!-- Left col: meta + evidence -->
+    <div class="detail-col">
+      <section class="section-card">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v8M8 12h8"/><circle cx="12" cy="12" r="10"/></svg>
+          告警元信息
+        </h2>
+        <div class="meta-grid">
+          <div class="meta-row">
+            <span class="meta-label">Severity</span>
+            <span class="meta-value" style="color: var(--severity-critical); font-weight: 600;">CRITICAL ▲</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Status</span>
+            <span class="meta-value" style="color: var(--status-firing); font-weight: 600;">FIRING</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Fingerprint</span>
+            <span class="meta-value mono">high-amount-order</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Pipeline</span>
+            <span class="meta-value mono">high-amount-order-alert v3</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Dedup Count</span>
+            <span class="meta-value mono">3</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Team</span>
+            <span class="meta-value">支付 · payment</span>
+          </div>
+        </div>
+
+        <div class="labels-block">
+          <div class="section-title" style="margin-bottom: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9M14 17H5M20 7l-3-3M20 7l-3 3M5 17l3-3M5 17l3 3"/></svg>
+            Labels
+          </div>
+          <div class="labels-list">
+            <div class="label-row"><span class="label-key">alertname</span><span class="label-arrow">=</span><span class="label-val">"high-amount-order"</span></div>
+            <div class="label-row"><span class="label-key">entity</span><span class="label-arrow">=</span><span class="label-val">"orders"</span></div>
+            <div class="label-row"><span class="label-key">namespace</span><span class="label-arrow">=</span><span class="label-val">"ops"</span></div>
+            <div class="label-row"><span class="label-key">pipeline</span><span class="label-arrow">=</span><span class="label-val">"high-amount-order-alert"</span></div>
+            <div class="label-row"><span class="label-key">order_id</span><span class="label-arrow">=</span><span class="label-val">"20260719-X8742"</span></div>
+            <div class="label-row"><span class="label-key">team</span><span class="label-arrow">=</span><span class="label-val">"payment"</span></div>
+          </div>
+        </div>
+
+        <div class="labels-block">
+          <div class="section-title" style="margin-bottom: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Annotations
+          </div>
+          <div class="annotations-list">
+            <div class="annotation-row">
+              <span class="annotation-key">summary</span>
+              <span class="annotation-val">订单金额 ¥58,200 超过阈值 ¥10,000</span>
+            </div>
+            <div class="annotation-row">
+              <span class="annotation-key">description</span>
+              <span class="annotation-val">来自 CDC events 的 INSERT 事件，订单 #20260719-X8742 触发高额订单告警，请值班确认是否为正常大额订单。</span>
+            </div>
+            <div class="annotation-row">
+              <span class="annotation-key">runbook</span>
+              <span class="annotation-val">https://runbooks.internal/a-solid/high-amount-order</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Pipeline 节点输出 · evidence
+        </h2>
+        <div class="evidence-toolbar">
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="json">JSON</button>
+            <button class="view-btn" data-view="table">Table</button>
+          </div>
+          <span style="font-size: 12px; color: var(--color-text-muted); font-family: 'Fira Code', monospace;">check 节点输出</span>
+        </div>
+
+        <div class="json-view" id="jsonView">
+          <button class="json-copy">复制</button>
+<span class="k">"matched"</span>: <span class="b">true</span>,
+<span class="k">"value"</span>: <span class="n">58200</span>,
+<span class="k">"threshold"</span>: <span class="n">10000</span>,
+<span class="k">"operator"</span>: <span class="s">"GT"</span>,
+<span class="k">"field"</span>: <span class="s">"amount"</span>,
+<span class="k">"evaluatedAt"</span>: <span class="s">"2026-07-19T14:32:18Z"</span>
+        </div>
+
+        <table class="table-view" id="tableView" style="display: none;">
+          <thead>
+            <tr><th>字段</th><th>值</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono">matched</td><td class="ok">true</td><td>节点判定结果</td></tr>
+            <tr><td class="mono">value</td><td class="mono">58200</td><td>事件实际值（amount）</td></tr>
+            <tr><td class="mono">threshold</td><td class="mono">10000</td><td>告警阈值</td></tr>
+            <tr><td class="mono">operator</td><td class="mono">GT</td><td>比较运算 (>)</td></tr>
+            <tr><td class="mono">field</td><td class="mono">amount</td><td>判定字段</td></tr>
+            <tr><td class="mono">evaluatedAt</td><td class="mono">2026-07-19T14:32:18Z</td><td>判定时间</td></tr>
+          </tbody>
+        </table>
+
+        <div class="evidence-narrative">
+          Pipeline 在 <strong class="num">2026-07-19 14:32:18</strong> 判定：amount=<strong class="num">58,200</strong> &gt; threshold=<strong class="num">10,000</strong>，<strong>命中告警条件</strong>，触发 CRITICAL。
+        </div>
+      </section>
+    </div>
+
+    <!-- Right col: timeline -->
+    <div class="detail-col">
+      <section class="section-card">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          状态流转时间线
+        </h2>
+        <div class="timeline">
+          <div class="tl-item start">
+            <div class="tl-time">14:32:18 · startsAt</div>
+            <div class="tl-title">告警首次触发 <span class="badge" style="background: rgba(220,38,38,0.12); color: var(--severity-critical);">FIRING</span></div>
+            <div class="tl-sub">由 Pipeline <span class="mono">high-amount-order-alert v3</span> 产出</div>
+          </div>
+          <div class="tl-item dedup">
+            <div class="tl-time">14:32:42</div>
+            <div class="tl-title">dedupCount = 2</div>
+            <div class="tl-sub">同 fingerprint 再触发，去重计数</div>
+          </div>
+          <div class="tl-item dedup">
+            <div class="tl-time">14:33:11</div>
+            <div class="tl-title">dedupCount = 3</div>
+            <div class="tl-sub">第三次触发，仍归并到本告警</div>
+          </div>
+          <div class="tl-item ack">
+            <div class="tl-time">14:34:02 · ack</div>
+            <div class="tl-title">认领告警 <span class="badge" style="background: rgba(217,119,6,0.12); color: var(--color-accent);">ack</span></div>
+            <div class="tl-sub">由 <strong>alice@a-solid</strong> 认领，备注：「值班跟进，疑似正常大单」</div>
+          </div>
+          <div class="tl-item resolved" style="opacity: 0.6;">
+            <div class="tl-time">— · 等待</div>
+            <div class="tl-title" style="color: var(--color-text-muted);">尚未 Resolve</div>
+            <div class="tl-sub">点击底部 Resolve 触发恢复流程</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v8M8 12h8"/><circle cx="12" cy="12" r="10"/></svg>
+          快速操作
+        </h2>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn btn-warn" style="justify-content: flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19 12c0-2-1-3.5-2.5-4.5"/></svg>
+            静默 1 小时 · silence
+          </button>
+          <button class="btn btn-secondary" style="justify-content: flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-6.4A8.4 8.4 0 1 1 21 11.5z"/></svg>
+            查看相关告警 · dedup × 3
+          </button>
+          <button class="btn btn-secondary" style="justify-content: flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            编辑 Pipeline · 跳转配置
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Bottom Action Bar -->
+<div class="action-bar">
+  <div class="action-bar-inner">
+    <div class="action-info">
+      <span class="sev-pill">CRITICAL</span>
+      <div>
+        <div class="action-info-fp">high-amount-order</div>
+        <div class="action-info-sub">订单 #20260719-X8742 · 持续 2m 47s · dedup × 3</div>
+      </div>
+    </div>
+    <button class="btn btn-secondary" id="btnAck">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Acknowledge
+    </button>
+    <button class="btn btn-warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/></svg>
+      Silence 1h
+    </button>
+    <button class="btn btn-primary" id="btnResolve">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+      Resolve
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+  <span id="toastMsg">操作成功</span>
+</div>
+
+<script>
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// View toggle
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const v = btn.dataset.view;
+    document.getElementById('jsonView').style.display = v === 'json' ? '' : 'none';
+    document.getElementById('tableView').style.display = v === 'table' ? '' : 'none';
+  });
+});
+
+// Copy JSON
+document.querySelector('.json-copy').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const text = document.getElementById('jsonView').lastChild.textContent.trim();
+  navigator.clipboard?.writeText(text).catch(() => {});
+  showToast('JSON 已复制');
+});
+
+// Node click highlight
+document.querySelectorAll('.pipeline-node').forEach(node => {
+  node.addEventListener('click', () => {
+    document.querySelectorAll('.pipeline-node').forEach(n => {
+      if (!n.classList.contains('alert-node')) n.classList.remove('active');
+    });
+    node.classList.add('active');
+    showToast(`已选中节点：${node.dataset.node}`);
+  });
+});
+
+// Action buttons
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('btnAck').addEventListener('click', () => {
+  showToast('已 Acknowledge · alice@a-solid');
+});
+
+document.getElementById('btnResolve').addEventListener('click', () => {
+  // POST /api/v1/alerts/{id}/resolve
+  showToast('告警已 Resolve · 进入恢复流程');
+  setTimeout(() => {
+    document.body.style.transition = 'opacity 200ms';
+    document.body.style.opacity = '0.5';
+    setTimeout(() => { document.body.style.opacity = '1'; }, 200);
+  }, 600);
+});
+
+// Animate trace entrance: stagger energize links
+if (!reduceMotion) {
+  const energized = document.querySelectorAll('.pipeline-link-energized');
+  energized.forEach((p, i) => {
+    p.style.opacity = '0';
+    p.style.transition = 'opacity 400ms ease';
+    setTimeout(() => { p.style.opacity = '1'; }, 200 + i * 250);
+  });
+}
+</script>
+
+</body>
+</html>

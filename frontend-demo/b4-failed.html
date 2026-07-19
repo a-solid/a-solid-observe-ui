@@ -1,0 +1,1144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 失败执行</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --fail-pending: #D97706;
+  --fail-resolved: #64748B;
+  --fail-ignored: #94A3B8;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(217, 119, 6, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(220, 38, 38, 0.05), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex; align-items: center; gap: var(--space-xl);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+.namespace-switch {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--color-text);
+  transition: all 200ms var(--ease);
+}
+.namespace-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fail-resolved);
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.18);
+}
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px; gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer; border: none; background: transparent;
+  transition: all 200ms var(--ease);
+  text-decoration: none;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.28);
+}
+
+/* === Subtabs === */
+.subtabs {
+  background: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.subtabs-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--space-2xl);
+  display: flex;
+  gap: var(--space-md);
+  overflow-x: auto;
+}
+.subtab {
+  padding: 14px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 200ms var(--ease);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.subtab:hover { color: var(--color-text); }
+.subtab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.subtab svg { width: 14px; height: 14px; }
+
+/* === Page === */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px 0;
+}
+.page-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* === Layout: 2 columns === */
+.dual-pane {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* === Left list === */
+.list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  position: sticky;
+  top: 100px;
+}
+
+.error-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.error-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.error-group-count {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.fail-card {
+  position: relative;
+  padding: var(--space-md);
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  overflow: hidden;
+}
+.fail-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--fail-color);
+}
+.fail-card.pending { --fail-color: var(--fail-pending); }
+.fail-card.pending {
+  border-color: rgba(217, 119, 6, 0.3);
+  animation: pendingBreath 2.4s var(--ease) infinite;
+}
+@keyframes pendingBreath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.0), var(--shadow-sm); }
+  50% { box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.08), var(--shadow-md); }
+}
+.fail-card.resolved { --fail-color: var(--fail-resolved); opacity: 0.7; }
+.fail-card.ignored { --fail-color: var(--fail-ignored); opacity: 0.55; }
+
+.fail-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.fail-card.selected {
+  background: rgba(255,255,255,0.95);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md), 0 0 0 2px rgba(30,64,175,0.1);
+}
+.fail-card.resolved.selected, .fail-card.ignored.selected { opacity: 1; }
+
+.fail-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.fail-error-type {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fail-color);
+}
+.fail-status {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.fail-card.pending .fail-status {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--fail-pending);
+}
+.fail-card.resolved .fail-status {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--fail-resolved);
+}
+.fail-card.ignored .fail-status {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--fail-ignored);
+}
+
+.fail-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fail-node-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(30,64,175,0.08);
+  color: var(--color-primary);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Fira Code', monospace;
+}
+.fail-card-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fail-card-meta-row { display: flex; gap: 8px; align-items: center; }
+.fail-card-meta-row strong { color: var(--color-text); font-weight: 500; }
+
+/* === Right diagnostic panel === */
+.diag-pane {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  min-height: 600px;
+  animation: diagFade 360ms var(--ease);
+}
+@keyframes diagFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.diag-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.diag-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.diag-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.diag-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.diag-error-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(220, 38, 38, 0.10);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--severity-critical);
+  border-radius: var(--radius-pill);
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 600;
+}
+.diag-sub {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.btn-retry {
+  padding: 10px 18px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.28);
+  flex-shrink: 0;
+}
+.btn-retry:hover {
+  background: #1E3A8A;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.35);
+}
+.btn-retry svg { width: 14px; height: 14px; }
+
+/* === Diagnostic visual: oscilloscope-style === */
+.diag-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--space-md) 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.diag-section-title svg { width: 14px; height: 14px; }
+
+.oscilloscope {
+  background: #0F172A;
+  border-radius: 12px;
+  padding: var(--space-md);
+  position: relative;
+  overflow: hidden;
+}
+.oscilloscope::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+.osc-svg {
+  display: block;
+  width: 100%;
+  height: 220px;
+  position: relative;
+  z-index: 1;
+}
+
+.osc-stage {
+  cursor: default;
+}
+.osc-stage .stage-rect {
+  fill: rgba(15, 23, 42, 0.4);
+  stroke: rgba(148, 163, 184, 0.4);
+  stroke-width: 1.4;
+  rx: 8;
+}
+.osc-stage .stage-label {
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  fill: #94A3B8;
+  text-anchor: middle;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.osc-stage .stage-name {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  fill: #E2E8F0;
+  text-anchor: middle;
+}
+
+.osc-stage.ok .stage-rect { stroke: rgba(22, 163, 74, 0.6); stroke-width: 1.6; }
+.osc-stage.ok .stage-label { fill: #4ADE80; }
+.osc-stage.ok .stage-name { fill: #86EFAC; }
+
+.osc-stage.fail .stage-rect {
+  fill: rgba(220, 38, 38, 0.12);
+  stroke: #DC2626;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5));
+}
+.osc-stage.fail .stage-label { fill: #FCA5A5; }
+.osc-stage.fail .stage-name { fill: #FECACA; }
+
+.osc-stage .fail-marker {
+  fill: #DC2626;
+}
+
+.osc-stage.fail .breath {
+  animation: oscBreath 1.6s var(--ease) infinite;
+}
+@keyframes oscBreath {
+  0%, 100% { opacity: 0.3; transform: scale(1); transform-origin: center; }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.osc-arrow {
+  stroke: rgba(148, 163, 184, 0.4);
+  stroke-width: 1.5;
+  fill: none;
+  stroke-dasharray: 4 3;
+  animation: arrowFlow 3s linear infinite;
+}
+@keyframes arrowFlow {
+  to { stroke-dashoffset: -14; }
+}
+
+.osc-wave {
+  fill: none;
+  stroke: #3B82F6;
+  stroke-width: 1.8;
+  opacity: 0.7;
+  animation: waveMove 4s linear infinite;
+}
+@keyframes waveMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(-40px); }
+}
+
+.osc-tag {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  fill: #FCA5A5;
+  font-weight: 600;
+}
+
+.osc-stage.ok .osc-tag { fill: #86EFAC; }
+
+/* === Error message === */
+.error-msg-block {
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(220, 38, 38, 0.06);
+  border-left: 3px solid var(--severity-critical);
+  border-radius: 8px;
+}
+.error-msg-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--severity-critical);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.error-msg-text {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+.error-msg-text .highlight {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--severity-critical);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* === Stack trace === */
+.stack-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  transition: opacity 200ms var(--ease);
+}
+.stack-toggle:hover { opacity: 0.7; }
+.stack-toggle svg { width: 12px; height: 12px; transition: transform 200ms var(--ease); }
+.stack-toggle.open svg { transform: rotate(90deg); }
+
+.stack-trace {
+  margin-top: var(--space-md);
+  background: #0F172A;
+  border-radius: 10px;
+  padding: var(--space-md);
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #94A3B8;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 300ms var(--ease), padding 300ms var(--ease);
+  padding-top: 0; padding-bottom: 0;
+}
+.stack-trace.open {
+  max-height: 400px;
+  padding-top: var(--space-md);
+  padding-bottom: var(--space-md);
+  overflow: auto;
+}
+.stack-trace .st-class { color: #FBBF24; }
+.stack-trace .st-method { color: #93C5FD; }
+.stack-trace .st-file { color: #94A3B8; }
+.stack-trace .st-line { color: #F87171; }
+.stack-trace .st-at {
+  display: block;
+  padding: 2px 0;
+}
+.stack-trace .st-at:first-child {
+  color: #FECACA;
+  font-weight: 500;
+}
+
+/* === Empty state === */
+.diag-empty {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-xl);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.diag-empty svg { width: 48px; height: 48px; opacity: 0.3; margin-bottom: var(--space-md); }
+
+/* === Toast === */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 300ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast svg { width: 16px; height: 16px; color: var(--fail-resolved); }
+
+@media (max-width: 1024px) {
+  .dual-pane { grid-template-columns: 1fr; }
+  .list-pane { position: static; }
+}
+@media (max-width: 768px) {
+  .page { padding: var(--space-md); }
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .subtabs-inner { padding: 0 var(--space-md); }
+  .namespace-switch { display: none; }
+  .diag-pane { padding: var(--space-md); }
+  .diag-head { flex-direction: column; align-items: stretch; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="c1-dashboard.html" class="brand">
+      <span class="brand-mark"></span>
+      <span>A-Solid Observe</span>
+    </a>
+    <div class="namespace-switch">
+      <span class="namespace-dot"></span>
+      <span class="mono">ops</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <nav class="role-tabs">
+      <a href="c1-dashboard.html" class="role-tab">大盘</a>
+      <a href="b1-alerts.html" class="role-tab active">告警</a>
+      <a href="a1-pipelines.html" class="role-tab">配置</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Subtabs -->
+<nav class="subtabs">
+  <div class="subtabs-inner">
+    <a href="b1-alerts.html" class="subtab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2z"/></svg>
+      告警列表
+    </a>
+    <a href="b2-alert-detail.html" class="subtab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+      告警详情
+    </a>
+    <a href="b3-executions.html" class="subtab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+      执行历史
+    </a>
+    <a href="b4-failed.html" class="subtab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></svg>
+      失败执行
+    </a>
+  </div>
+</nav>
+
+<main class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">失败执行 · 节点诊断</h1>
+      <p class="page-subtitle">最近 <span class="num">24h</span> · <span class="num">7</span> 个失败 · <span class="num" style="color: var(--fail-pending); font-weight: 600;">4</span> PENDING · <span class="num">3</span> 已处理</p>
+    </div>
+  </div>
+
+  <div class="dual-pane">
+    <!-- Left: failed list -->
+    <aside class="list-pane">
+      <div class="error-group">
+        <div class="error-group-head">
+          <span>NullPointerException</span>
+          <span class="error-group-count">2</span>
+        </div>
+        <div class="fail-card pending selected" data-id="f1">
+          <div class="fail-card-head">
+            <div class="fail-error-type">NPE @ check</div>
+            <span class="fail-status">PENDING</span>
+          </div>
+          <div class="fail-card-title">
+            高额订单告警
+            <span class="fail-node-tag">node: check</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>high-amount-order-alert v3</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>14:31:48</strong> · <span style="color: var(--fail-pending);">2 分钟前</span></div>
+          </div>
+        </div>
+        <div class="fail-card resolved" data-id="f2">
+          <div class="fail-card-head">
+            <div class="fail-error-type">NPE @ check</div>
+            <span class="fail-status">RESOLVED</span>
+          </div>
+          <div class="fail-card-title">
+            库存告警
+            <span class="fail-node-tag">node: check</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>inventory-alert v2</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>13:42:11</strong> · 已修复</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-group">
+        <div class="error-group-head">
+          <span>EmitError</span>
+          <span class="error-group-count">1</span>
+        </div>
+        <div class="fail-card pending" data-id="f3">
+          <div class="fail-card-head">
+            <div class="fail-error-type">EmitError @ emit</div>
+            <span class="fail-status">PENDING</span>
+          </div>
+          <div class="fail-card-title">
+            风控评分监控
+            <span class="fail-node-tag">node: emit</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>risk-score-monitor v2</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>14:28:33</strong> · <span style="color: var(--fail-pending);">5 分钟前</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-group">
+        <div class="error-group-head">
+          <span>SchemaMismatch</span>
+          <span class="error-group-count">2</span>
+        </div>
+        <div class="fail-card pending" data-id="f4">
+          <div class="fail-card-head">
+            <div class="fail-error-type">SchemaMismatch @ map</div>
+            <span class="fail-status">PENDING</span>
+          </div>
+          <div class="fail-card-title">
+            订单回调监控
+            <span class="fail-node-tag">node: map</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>payment-callback-monitor v2</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>14:15:02</strong> · <span style="color: var(--fail-pending);">18 分钟前</span></div>
+          </div>
+        </div>
+        <div class="fail-card ignored" data-id="f5">
+          <div class="fail-card-head">
+            <div class="fail-error-type">SchemaMismatch @ map</div>
+            <span class="fail-status">IGNORED</span>
+          </div>
+          <div class="fail-card-title">
+            网关延迟监控
+            <span class="fail-node-tag">node: map</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>gateway-latency-alert v2</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>09:11:48</strong> · 已忽略</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-group">
+        <div class="error-group-head">
+          <span>TimeoutError</span>
+          <span class="error-group-count">2</span>
+        </div>
+        <div class="fail-card pending" data-id="f6">
+          <div class="fail-card-head">
+            <div class="fail-error-type">TimeoutError @ http</div>
+            <span class="fail-status">PENDING</span>
+          </div>
+          <div class="fail-card-title">
+            外部接口探测
+            <span class="fail-node-tag">node: http</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>external-probe v1</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>14:02:21</strong> · <span style="color: var(--fail-pending);">30 分钟前</span></div>
+          </div>
+        </div>
+        <div class="fail-card resolved" data-id="f7">
+          <div class="fail-card-head">
+            <div class="fail-error-type">TimeoutError @ http</div>
+            <span class="fail-status">RESOLVED</span>
+          </div>
+          <div class="fail-card-title">
+            Redis 探活
+            <span class="fail-node-tag">node: http</span>
+          </div>
+          <div class="fail-card-meta">
+            <div class="fail-card-meta-row">pipeline: <strong>redis-probe v1</strong></div>
+            <div class="fail-card-meta-row">createdAt: <strong>12:18:54</strong> · 已恢复</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right: diagnostic panel -->
+    <section class="diag-pane" id="diagPane">
+      <!-- rendered by JS -->
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+  <span id="toastMsg">操作成功</span>
+</div>
+
+<script>
+const ICON_RETRY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>';
+const ICON_SCOPE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>';
+
+// Failure data: which stage failed (input / process / output)
+const failures = {
+  f1: {
+    pipeline: 'high-amount-order-alert v3',
+    nodeName: 'check',
+    errorType: 'NullPointerException',
+    errorTypeShort: 'NPE',
+    failStage: 'process',
+    errorMessage: 'Cannot invoke "Object.compareTo(Object)" because "value" is null',
+    createdAt: '2026-07-19T14:31:48Z',
+    failedAt: 'check.value.compareTo',
+    inputPreview: { entity: 'orders', op: 'INSERT', amount: null, orderId: '20260719-X8740' },
+    stack: [
+      'at com.asolid.observe.pipeline.nodes.CheckNode.evaluate(CheckNode.java:84)',
+      'at com.asolid.observe.pipeline.PipelineRunner.run(PipelineRunner.java:42)',
+      'at com.asolid.observe.dispatcher.Dispatcher.dispatch(Dispatcher.java:128)',
+      'at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)',
+    ],
+  },
+  f3: {
+    pipeline: 'risk-score-monitor v2',
+    nodeName: 'emit',
+    errorType: 'EmitError',
+    errorTypeShort: 'EmitError',
+    failStage: 'output',
+    errorMessage: 'Alert emit failed: downstream alertmanager timeout (3s) while sending alert risk-score-anomaly',
+    createdAt: '2026-07-19T14:28:33Z',
+    failedAt: 'emit.alertmanager.send',
+    inputPreview: { entity: 'user-risk-score', op: 'UPDATE', userId: 'user_88210', score: 92 },
+    stack: [
+      'at com.asolid.observe.pipeline.nodes.EmitNode.send(EmitNode.java:117)',
+      'at com.asolid.observe.pipeline.PipelineRunner.run(PipelineRunner.java:58)',
+      'at com.asolid.observe.dispatcher.Dispatcher.dispatch(Dispatcher.java:128)',
+      'Caused by: java.net.SocketTimeoutException: read timed out',
+    ],
+  },
+  f4: {
+    pipeline: 'payment-callback-monitor v2',
+    nodeName: 'map',
+    errorType: 'SchemaMismatch',
+    errorTypeShort: 'SchemaMismatch',
+    failStage: 'input',
+    errorMessage: 'Field "callbackStatus" missing from event schema (expected: enum, actual: missing)',
+    createdAt: '2026-07-19T14:15:02Z',
+    failedAt: 'map.field.callbackStatus',
+    inputPreview: { entity: 'payment-callback', op: 'INSERT', transactionId: 'tx_88210_X' },
+    stack: [
+      'at com.asolid.observe.pipeline.nodes.MapNode.apply(MapNode.java:62)',
+      'at com.asolid.observe.pipeline.PipelineRunner.run(PipelineRunner.java:38)',
+      'at com.asolid.observe.dispatcher.Dispatcher.dispatch(Dispatcher.java:128)',
+      'Caused by: com.asolid.observe.schema.MissingFieldException: callbackStatus',
+    ],
+  },
+  f6: {
+    pipeline: 'external-probe v1',
+    nodeName: 'http',
+    errorType: 'TimeoutError',
+    errorTypeShort: 'Timeout',
+    failStage: 'process',
+    errorMessage: 'HTTP request to https://api.partner.internal/sync timed out after 5000ms',
+    createdAt: '2026-07-19T14:02:21Z',
+    failedAt: 'http.request.partner',
+    inputPreview: { entity: 'cron', op: 'CRON', cron: '*/2 * * * *' },
+    stack: [
+      'at com.asolid.observe.pipeline.nodes.HttpNode.execute(HttpNode.java:142)',
+      'at com.asolid.observe.pipeline.PipelineRunner.run(PipelineRunner.java:42)',
+      'at com.asolid.observe.dispatcher.Dispatcher.dispatch(Dispatcher.java:128)',
+      'Caused by: java.net.http.HttpTimeoutException: request timed out',
+    ],
+  },
+};
+
+const stageMeta = {
+  input:   { label: 'INPUT',   name: 'triggerEvent', x: 60,  w: 130 },
+  process: { label: 'NODE',    name: 'check / map / http', x: 320, w: 200 },
+  output:  { label: 'OUTPUT',  name: 'emit', x: 660, w: 130 },
+};
+
+function renderDiag(id) {
+  const f = failures[id];
+  if (!f) return;
+  const pane = document.getElementById('diagPane');
+
+  // re-trigger animation
+  pane.style.animation = 'none';
+  pane.offsetHeight;
+  pane.style.animation = '';
+
+  const stages = ['input', 'process', 'output'];
+  const failStageIdx = stages.indexOf(f.failStage);
+
+  const inputJson = JSON.stringify(f.inputPreview, null, 2)
+    .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>')
+    .replace(/: (null|true|false)/g, ': <span class="b">$1</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="n">$1</span>');
+
+  const stackHtml = f.stack.map((line, i) => {
+    return `<span class="st-at">${line
+      .replace(/at /g, '<span style="color:#64748B;">at </span>')
+      .replace(/([a-zA-Z_$][\w$]*\.[a-zA-Z_$][\w$]*\.[a-zA-Z_$][\w$]*\.[a-zA-Z_$][\w$]*)(\.[a-zA-Z_$][\w$]*)?\./g, '<span class="st-class">$1</span>.')
+      .replace(/(\w+)\(/, '<span class="st-method">$1</span>(')
+      .replace(/([\w$]+\.java):(\d+)/g, '<span class="st-file">$1</span>:<span class="st-line">$2</span>')
+    }</span>`;
+  }).join('');
+
+  pane.innerHTML = `
+    <div class="diag-head">
+      <div class="diag-title-block">
+        <span class="diag-eyebrow">节点诊断 · ${f.nodeName}</span>
+        <h2 class="diag-title">
+          ${f.pipeline}
+          <span class="diag-error-tag">${ICON_ALERT}${f.errorType}</span>
+        </h2>
+        <span class="diag-sub">失败于 <span class="mono">${f.failedAt}</span> · <span class="mono">${f.createdAt}</span></span>
+      </div>
+      <button class="btn-retry">${ICON_RETRY}一键重试</button>
+    </div>
+
+    <div>
+      <p class="diag-section-title">
+        ${ICON_SCOPE}
+        诊断信号 · 输入 → 节点处理 → 输出
+      </p>
+      <div class="oscilloscope">
+        <svg class="osc-svg" viewBox="0 0 850 220" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="waveGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+              <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Animated wave (signal flow) -->
+          <g class="osc-wave-group">
+            <path class="osc-wave" d="M 0 110 Q 20 100 40 110 T 80 110 T 120 110 T 160 110 T 200 110 T 240 110 T 280 110 T 320 110 T 360 110 T 400 110 T 440 110 T 480 110 T 520 110 T 560 110 T 600 110 T 640 110 T 680 110 T 720 110 T 760 110 T 800 110 T 840 110 T 880 110"/>
+          </g>
+
+          <!-- Arrows between stages -->
+          <path class="osc-arrow" d="M 200 110 L 310 110"/>
+          <path class="osc-arrow" d="M 530 110 L 650 110" stroke="${failStageIdx > 0 ? 'rgba(148,163,184,0.4)' : 'rgba(220,38,38,0.5)'}"/>
+
+          <!-- INPUT stage -->
+          <g class="osc-stage ${failStageIdx === 0 ? 'fail' : 'ok'}">
+            <rect class="stage-rect" x="60" y="70" width="130" height="80" rx="8"/>
+            ${failStageIdx === 0 ? `<circle class="breath fail-marker" cx="125" cy="70" r="5"/>` : ''}
+            <text class="stage-label" x="125" y="58">INPUT</text>
+            <text class="stage-name" x="125" y="105">triggerEvent</text>
+            <text class="osc-tag" x="125" y="135">${failStageIdx === 0 ? '✗ 崩在这' : '✓ 进入正常'}</text>
+          </g>
+
+          <!-- PROCESS stage (NODE) -->
+          <g class="osc-stage ${failStageIdx === 1 ? 'fail' : (failStageIdx < 1 ? 'ok' : 'muted')}">
+            <rect class="stage-rect" x="320" y="70" width="200" height="80" rx="8"/>
+            ${failStageIdx === 1 ? `<circle class="breath fail-marker" cx="420" cy="70" r="5"/>` : ''}
+            <text class="stage-label" x="420" y="58">${failStageIdx < 1 ? 'NODE · 已跳过' : 'NODE · 处理中'}</text>
+            <text class="stage-name" x="420" y="105">${f.nodeName}</text>
+            <text class="osc-tag" x="420" y="135">${failStageIdx === 1 ? '✗ 崩在这' : (failStageIdx < 1 ? '— 未到达' : '✓ 正常处理')}</text>
+          </g>
+
+          <!-- OUTPUT stage -->
+          <g class="osc-stage ${failStageIdx === 2 ? 'fail' : (failStageIdx < 2 ? 'ok' : 'muted')}">
+            <rect class="stage-rect" x="660" y="70" width="130" height="80" rx="8"/>
+            ${failStageIdx === 2 ? `<circle class="breath fail-marker" cx="725" cy="70" r="5"/>` : ''}
+            <text class="stage-label" x="725" y="58">${failStageIdx < 2 ? 'OUTPUT · 已跳过' : 'OUTPUT · 发送中'}</text>
+            <text class="stage-name" x="725" y="105">emit alert</text>
+            <text class="osc-tag" x="725" y="135">${failStageIdx === 2 ? '✗ 崩在这' : (failStageIdx < 2 ? '— 未到达' : '✓ 正常')}</text>
+          </g>
+
+          <!-- Time axis -->
+          <line x1="40" y1="180" x2="810" y2="180" stroke="rgba(148,163,184,0.3)" stroke-width="1"/>
+          <text x="125" y="200" font-family="Fira Code" font-size="10" fill="#64748B" text-anchor="middle">t₀</text>
+          <text x="420" y="200" font-family="Fira Code" font-size="10" fill="#64748B" text-anchor="middle">t₁</text>
+          <text x="725" y="200" font-family="Fira Code" font-size="10" fill="#64748B" text-anchor="middle">t₂</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="error-msg-block">
+      <p class="error-msg-title">
+        ${ICON_ALERT}
+        ERROR MESSAGE · ${f.errorType}
+      </p>
+      <div class="error-msg-text">${highlightError(f.errorMessage)}</div>
+    </div>
+
+    <div>
+      <p class="diag-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        triggerEvent · 输入快照
+      </p>
+      <div class="oscilloscope" style="padding: 14px;">
+        <pre style="margin:0; font-family:'Fira Code',monospace; font-size:12px; line-height:1.65; color:#CBD5E1;">${inputJson}</pre>
+      </div>
+    </div>
+
+    <div>
+      <button class="stack-toggle" id="stackToggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        展开 stackTrace
+      </button>
+      <div class="stack-trace" id="stackTrace">${stackHtml}</div>
+    </div>
+  `;
+
+  // wire stack toggle
+  document.getElementById('stackToggle').addEventListener('click', function() {
+    this.classList.toggle('open');
+    document.getElementById('stackTrace').classList.toggle('open');
+  });
+
+  // wire retry
+  pane.querySelector('.btn-retry').addEventListener('click', () => {
+    showToast(`已提交重试 · ${f.pipeline}`);
+  });
+}
+
+function highlightError(msg) {
+  // wrap quoted strings + null/timeout keywords in highlight
+  return msg
+    .replace(/"([^"]+)"/g, '<span class="highlight">"$1"</span>')
+    .replace(/\b(null|timeout|missing|failed)\b/gi, '<span class="highlight">$1</span>');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.querySelectorAll('.fail-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.fail-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    renderDiag(card.dataset.id);
+  });
+});
+
+// initial render
+renderDiag('f1');
+</script>
+
+</body>
+</html>

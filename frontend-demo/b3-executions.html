@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 执行历史</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+  --color-ring: #1E40AF;
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --exec-success: #16A34A;
+  --exec-short: #D97706;
+  --exec-failed: #DC2626;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(22, 163, 74, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex; align-items: center; gap: var(--space-xl);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px;
+  color: var(--color-primary);
+  text-decoration: none; letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+.namespace-switch {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--color-text);
+  transition: all 200ms var(--ease);
+}
+.namespace-switch:hover { box-shadow: var(--shadow-sm); }
+.namespace-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--exec-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px; gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer; border: none; background: transparent;
+  transition: all 200ms var(--ease);
+  text-decoration: none;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.28);
+}
+
+/* === Sub tabs (B1/B2/B3/B4) === */
+.subtabs {
+  background: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.subtabs-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--space-2xl);
+  display: flex;
+  gap: var(--space-md);
+  overflow-x: auto;
+}
+.subtab {
+  padding: 14px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 200ms var(--ease);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.subtab:hover { color: var(--color-text); }
+.subtab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.subtab svg { width: 14px; height: 14px; }
+
+/* === Page === */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px 0;
+}
+.page-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* === Stats row === */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+}
+.stat-card {
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: all 200ms var(--ease);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--stat-color);
+}
+.stat-card.success { --stat-color: var(--exec-success); }
+.stat-card.short { --stat-color: var(--exec-short); }
+.stat-card.avg { --stat-color: var(--color-secondary); }
+.stat-card.throughput { --stat-color: var(--color-primary); }
+
+.stat-head {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.stat-head svg { width: 14px; height: 14px; color: var(--stat-color); }
+.stat-num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.stat-num .unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-left: 4px;
+}
+.stat-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* === Filters === */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+.filter-group { display: inline-flex; align-items: center; gap: 8px; }
+.filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pill-group {
+  display: inline-flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px; gap: 2px;
+}
+.opt-pill {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer; border: none; background: transparent;
+  transition: all 200ms var(--ease);
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.opt-pill:hover { color: var(--color-text); }
+.opt-pill.active.success { background: rgba(22,163,74,0.12); color: var(--exec-success); }
+.opt-pill.active.short { background: rgba(217,119,6,0.12); color: var(--exec-short); }
+.opt-pill.active.primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.25);
+}
+
+.pipeline-select {
+  padding: 6px 12px 6px 14px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--color-text);
+  display: inline-flex; align-items: center; gap: 8px;
+  min-width: 240px;
+}
+.pipeline-select svg { width: 12px; height: 12px; opacity: 0.6; }
+
+.filter-spacer { flex: 1; }
+
+.range-group {
+  display: inline-flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px; gap: 2px;
+}
+.range-group .opt-pill { padding: 5px 10px; font-size: 12px; }
+
+/* === Executions swimlane === */
+.exec-card {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  animation: slideIn 360ms var(--ease);
+  transition: all 200ms var(--ease);
+}
+.exec-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.exec-row {
+  display: grid;
+  grid-template-columns: 140px 56px 1fr 200px 130px 24px;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+  transition: background 200ms var(--ease);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.exec-row:last-child { border-bottom: none; }
+.exec-row:hover { background: rgba(59,130,246,0.04); }
+.exec-row.expanded { background: rgba(59,130,246,0.06); }
+
+.exec-time {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.exec-time-stamp {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.exec-time-rel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.exec-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trigger-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  position: relative;
+}
+.trigger-icon svg { width: 18px; height: 18px; }
+.trigger-icon.cdc { color: var(--color-primary); }
+.trigger-icon.cdc::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 13px;
+  border: 1.5px solid var(--color-primary);
+  opacity: 0.25;
+  animation: cdcPulse 2s var(--ease) infinite;
+}
+@keyframes cdcPulse {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.trigger-icon.cron { color: var(--color-accent); }
+.trigger-icon.cron svg { animation: spinSlow 6s linear infinite; }
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.trigger-icon.api { color: var(--severity-info); }
+
+.exec-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.exec-pipeline-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exec-pipeline-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+}
+
+.exec-duration {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.duration-bar-wrap {
+  height: 8px;
+  background: rgba(30, 64, 175, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.duration-bar {
+  height: 100%;
+  background: var(--exec-color);
+  border-radius: 4px;
+  width: 0;
+  transition: width 600ms var(--ease);
+  position: relative;
+}
+.duration-bar::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: rgba(255,255,255,0.6);
+  filter: blur(2px);
+}
+.duration-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+}
+.duration-meta .num {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.exec-result {
+  display: flex;
+  justify-content: flex-end;
+}
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.result-badge svg { width: 12px; height: 12px; }
+.result-success {
+  background: rgba(22,163,74,0.10);
+  color: var(--exec-success);
+}
+.result-short {
+  background: rgba(217,119,6,0.10);
+  color: var(--exec-short);
+}
+
+.exec-chev {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--color-text-muted);
+  transition: transform 200ms var(--ease);
+}
+.exec-row.expanded .exec-chev { transform: rotate(90deg); }
+.exec-chev svg { width: 16px; height: 16px; }
+
+.exec-detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 300ms var(--ease);
+  background: rgba(15, 23, 42, 0.02);
+  border-top: 1px solid transparent;
+}
+.exec-row.expanded + .exec-detail {
+  max-height: 600px;
+  border-top: 1px solid var(--color-border-soft);
+}
+.exec-detail-inner {
+  padding: var(--space-lg) var(--space-xl);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+}
+.detail-block-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--space-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detail-block-title svg { width: 12px; height: 12px; }
+
+.event-json {
+  background: #0F172A;
+  border-radius: 8px;
+  padding: var(--space-md);
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #CBD5E1;
+  overflow-x: auto;
+}
+.event-json .k { color: #93C5FD; }
+.event-json .s { color: #86EFAC; }
+.event-json .n { color: #FBBF24; }
+
+.path-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: 'Fira Code', monospace;
+  color: var(--color-text);
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-soft);
+  margin-bottom: 10px;
+}
+.path-mini-arrow { color: var(--color-text-muted); }
+.path-mini-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(30,64,175,0.08);
+  border-radius: 4px;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+.path-mini-node.check {
+  background: rgba(22,163,74,0.10);
+  color: var(--exec-success);
+}
+.path-mini-node.alert {
+  background: rgba(220,38,38,0.10);
+  color: var(--severity-critical);
+}
+.path-mini-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--exec-success);
+  font-weight: 500;
+}
+
+.exec-detail-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--color-border);
+}
+.exec-detail-stat:last-child { border-bottom: none; }
+.exec-detail-stat .lbl { color: var(--color-text-muted); }
+.exec-detail-stat .val { font-family: 'Fira Code', monospace; font-weight: 500; }
+
+.list-footer {
+  padding: var(--space-lg);
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 1024px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .exec-row { grid-template-columns: 110px 40px 1fr 100px 90px 24px; }
+  .exec-detail-inner { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .page { padding: var(--space-md); }
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .subtabs-inner { padding: 0 var(--space-md); }
+  .namespace-switch { display: none; }
+  .exec-row { grid-template-columns: 80px 36px 1fr 80px; padding: var(--space-md); gap: var(--space-sm); }
+  .exec-duration, .exec-chev { display: none; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="c1-dashboard.html" class="brand">
+      <span class="brand-mark"></span>
+      <span>A-Solid Observe</span>
+    </a>
+    <div class="namespace-switch">
+      <span class="namespace-dot"></span>
+      <span class="mono">ops</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <nav class="role-tabs">
+      <a href="c1-dashboard.html" class="role-tab">大盘</a>
+      <a href="b1-alerts.html" class="role-tab active">告警</a>
+      <a href="a1-pipelines.html" class="role-tab">配置</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Subtabs -->
+<nav class="subtabs">
+  <div class="subtabs-inner">
+    <a href="b1-alerts.html" class="subtab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>
+      告警列表
+    </a>
+    <a href="b2-alert-detail.html" class="subtab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+      告警详情
+    </a>
+    <a href="b3-executions.html" class="subtab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      执行历史
+    </a>
+    <a href="b4-failed.html" class="subtab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></svg>
+      失败执行
+    </a>
+  </div>
+</nav>
+
+<main class="page">
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">执行历史</h1>
+      <p class="page-subtitle">最近 <span class="num">24h</span> · <span class="num">1,284</span> 次执行 · 实时流入</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card success">
+      <div class="stat-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>
+        SUCCESS
+      </div>
+      <div class="stat-num"><span class="num" data-count="1102">0</span></div>
+      <div class="stat-meta">触发告警 · 占比 85.8%</div>
+    </div>
+    <div class="stat-card short">
+      <div class="stat-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        SHORT_CIRCUITED
+      </div>
+      <div class="stat-num"><span class="num" data-count="182">0</span></div>
+      <div class="stat-meta">条件未命中 · 占比 14.2%</div>
+    </div>
+    <div class="stat-card avg">
+      <div class="stat-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        平均耗时
+      </div>
+      <div class="stat-num"><span class="num" data-count="48">0</span><span class="unit">ms</span></div>
+      <div class="stat-meta">P95: <span class="num">112ms</span> · P99: <span class="num">186ms</span></div>
+    </div>
+    <div class="stat-card throughput">
+      <div class="stat-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+        吞吐 · 5min
+      </div>
+      <div class="stat-num"><span class="num" data-count="142">0</span><span class="unit">/min</span></div>
+      <div class="stat-meta">峰值 <span class="num">218/min</span> · 14:30</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Pipeline</span>
+      <button class="pipeline-select">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>
+        <span>全部 pipeline</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">结果</span>
+      <div class="pill-group" id="resultFilter">
+        <button class="opt-pill active primary" data-result="all">全部</button>
+        <button class="opt-pill success" data-result="SUCCESS">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+          SUCCESS
+        </button>
+        <button class="opt-pill short" data-result="SHORT_CIRCUITED">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          SHORT
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-spacer"></div>
+
+    <div class="filter-group">
+      <span class="filter-label">时间</span>
+      <div class="range-group" id="rangeFilter">
+        <button class="opt-pill" data-range="1h">1h</button>
+        <button class="opt-pill active primary" data-range="24h">24h</button>
+        <button class="opt-pill" data-range="7d">7d</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Execution list -->
+  <div class="exec-list" id="execList">
+    <!-- rendered by JS -->
+  </div>
+
+  <div class="list-footer">
+    显示 <span class="num" id="shownCount">14</span> 条 · 滚动加载更多
+  </div>
+</main>
+
+<script>
+const ICON_CDC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0" transform="scale(0.85) translate(0 2)"/></svg>';
+const ICON_CRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const ICON_API = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>';
+const ICON_BOLT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+const ICON_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
+
+const triggerType = {
+  CDC: { icon: ICON_CDC, cls: 'cdc' },
+  CRON: { icon: ICON_CRON, cls: 'cron' },
+  API: { icon: ICON_API, cls: 'api' },
+};
+
+const executions = [
+  { id: 'e1', time: '14:32:18', rel: '刚刚', trigger: 'CDC', pipeline: 'high-amount-order-alert', pipelineMeta: 'v3 · PUBLISHED', duration: 38, durationPct: 19, result: 'SUCCESS', event: { entity: 'orders', op: 'INSERT', amount: 58200, orderId: '20260719-X8742' } },
+  { id: 'e2', time: '14:32:11', rel: '7秒前', trigger: 'CDC', pipeline: 'high-amount-order-alert', pipelineMeta: 'v3 · PUBLISHED', duration: 22, durationPct: 11, result: 'SHORT_CIRCUITED', event: { entity: 'orders', op: 'INSERT', amount: 890, orderId: '20260719-X8741' } },
+  { id: 'e3', time: '14:31:54', rel: '24秒前', trigger: 'CDC', pipeline: 'risk-score-monitor', pipelineMeta: 'v2 · PUBLISHED', duration: 142, durationPct: 71, result: 'SUCCESS', event: { entity: 'user-risk-score', op: 'UPDATE', userId: 'user_88210', score: 92 } },
+  { id: 'e4', time: '14:31:32', rel: '46秒前', trigger: 'CRON', pipeline: 'daily-report-job', pipelineMeta: 'v1 · PUBLISHED', duration: 138, durationPct: 69, result: 'SUCCESS', event: { entity: 'cron', cron: '*/5 * * * *', job: 'metrics-aggregation' } },
+  { id: 'e5', time: '14:31:18', rel: '1分钟前', trigger: 'CDC', pipeline: 'inventory-mismatch-warn', pipelineMeta: 'v4 · PUBLISHED', duration: 56, durationPct: 28, result: 'SHORT_CIRCUITED', event: { entity: 'inventory', op: 'UPDATE', sku: '2241', diff: 0 } },
+  { id: 'e6', time: '14:30:48', rel: '1分钟前', trigger: 'API', pipeline: 'manual-batch-check', pipelineMeta: 'v1 · DRAFT', duration: 186, durationPct: 93, result: 'SUCCESS', event: { entity: 'batch', op: 'API', count: 1242 } },
+  { id: 'e7', time: '14:30:22', rel: '2分钟前', trigger: 'CDC', pipeline: 'order-failure-rate-warn', pipelineMeta: 'v5 · PUBLISHED', duration: 88, durationPct: 44, result: 'SUCCESS', event: { entity: 'order-service', op: 'INSERT', failureRate: 0.038 } },
+  { id: 'e8', time: '14:30:01', rel: '2分钟前', trigger: 'CRON', pipeline: 'gateway-latency-alert', pipelineMeta: 'v2 · PUBLISHED', duration: 42, durationPct: 21, result: 'SUCCESS', event: { entity: 'cron', cron: '*/10 * * * *', p99Latency: 4200 } },
+  { id: 'e9', time: '14:29:38', rel: '3分钟前', trigger: 'CDC', pipeline: 'high-amount-order-alert', pipelineMeta: 'v3 · PUBLISHED', duration: 32, durationPct: 16, result: 'SHORT_CIRCUITED', event: { entity: 'orders', op: 'INSERT', amount: 3200, orderId: '20260719-X8738' } },
+  { id: 'e10', time: '14:29:11', rel: '3分钟前', trigger: 'CDC', pipeline: 'db-health-monitor', pipelineMeta: 'v6 · PUBLISHED', duration: 64, durationPct: 32, result: 'SUCCESS', event: { entity: 'pg-primary', op: 'METRIC', connUsage: 0.97 } },
+  { id: 'e11', time: '14:28:54', rel: '4分钟前', trigger: 'CDC', pipeline: 'kafka-lag-monitor', pipelineMeta: 'v3 · PUBLISHED', duration: 24, durationPct: 12, result: 'SUCCESS', event: { entity: 'kafka-orders-topic', op: 'METRIC', lag: 24000 } },
+  { id: 'e12', time: '14:28:30', rel: '4分钟前', trigger: 'CDC', pipeline: 'payment-callback-monitor', pipelineMeta: 'v2 · PUBLISHED', duration: 112, durationPct: 56, result: 'SUCCESS', event: { entity: 'payment-callback', op: 'INSERT', successRate: 0.87 } },
+  { id: 'e13', time: '14:28:09', rel: '4分钟前', trigger: 'CDC', pipeline: 'high-amount-order-alert', pipelineMeta: 'v3 · PUBLISHED', duration: 28, durationPct: 14, result: 'SUCCESS', event: { entity: 'orders', op: 'INSERT', amount: 18200, orderId: '20260719-X8735' } },
+  { id: 'e14', time: '14:27:48', rel: '5分钟前', trigger: 'CRON', pipeline: 'redis-memory-monitor', pipelineMeta: 'v4 · PUBLISHED', duration: 38, durationPct: 19, result: 'SHORT_CIRCUITED', event: { entity: 'redis-cluster', op: 'METRIC', memUsage: 0.74 } },
+];
+
+let currentFilter = 'all';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function renderRow(e, i) {
+  const trig = triggerType[e.trigger];
+  const isShort = e.result === 'SHORT_CIRCUITED';
+  const execColor = isShort ? 'var(--exec-short)' : 'var(--exec-success)';
+  const badgeCls = isShort ? 'result-short' : 'result-success';
+  const badgeIcon = isShort ? ICON_BOLT : ICON_CHECK;
+
+  const card = document.createElement('div');
+  card.className = 'exec-card';
+  card.dataset.id = e.id;
+  card.dataset.result = e.result;
+  card.style.animationDelay = `${Math.min(i * 30, 360)}ms`;
+
+  const eventJson = JSON.stringify(e.event, null, 2)
+    .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+    .replace(/: "([^"]+)"/g, ': <span class="s">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="n">$1</span>');
+
+  card.innerHTML = `
+    <div class="exec-row" data-id="${e.id}">
+      <div class="exec-time">
+        <div class="exec-time-stamp">${e.time}</div>
+        <div class="exec-time-rel">${e.rel}</div>
+      </div>
+      <div class="exec-trigger">
+        <div class="trigger-icon ${trig.cls}" title="${e.trigger}">${trig.icon}</div>
+      </div>
+      <div class="exec-pipeline">
+        <div class="exec-pipeline-name">${e.pipeline}</div>
+        <div class="exec-pipeline-meta">${e.trigger} · ${e.pipelineMeta}</div>
+      </div>
+      <div class="exec-duration">
+        <div class="duration-bar-wrap">
+          <div class="duration-bar" data-pct="${e.durationPct}" style="--exec-color: ${execColor}; background: ${execColor};"></div>
+        </div>
+        <div class="duration-meta">
+          <span>0ms</span>
+          <span class="num">${e.duration}ms</span>
+          <span>200ms</span>
+        </div>
+      </div>
+      <div class="exec-result">
+        <span class="result-badge ${badgeCls}">${badgeIcon}${e.result}</span>
+      </div>
+      <div class="exec-chev">${ICON_CHEV}</div>
+    </div>
+    <div class="exec-detail">
+      <div class="exec-detail-inner">
+        <div>
+          <p class="detail-block-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+            triggerEvent
+          </p>
+          <div class="event-json">${eventJson}</div>
+        </div>
+        <div>
+          <p class="detail-block-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>
+            执行路径
+          </p>
+          <div class="path-mini">
+            <span class="path-mini-node">source</span>
+            <span class="path-mini-arrow">→</span>
+            <span class="path-mini-node">subscription</span>
+            <span class="path-mini-arrow">→</span>
+            <span class="path-mini-node check">check</span>
+            ${isShort ? '<span class="path-mini-check">✓ 条件未命中</span>' : '<span class="path-mini-arrow">→</span><span class="path-mini-node alert">alert</span><span class="path-mini-check" style="color:var(--severity-critical)">✓ 触发告警</span>'}
+          </div>
+          <div class="exec-detail-stat">
+            <span class="lbl">executionId</span>
+            <span class="val">exec_${e.id}_20260719</span>
+          </div>
+          <div class="exec-detail-stat">
+            <span class="lbl">triggerType</span>
+            <span class="val">${e.trigger}</span>
+          </div>
+          <div class="exec-detail-stat">
+            <span class="lbl">durationMs</span>
+            <span class="val">${e.duration}</span>
+          </div>
+          <div class="exec-detail-stat">
+            <span class="lbl">result</span>
+            <span class="val" style="color:${execColor}">${e.result}</span>
+          </div>
+          <div class="exec-detail-stat">
+            <span class="lbl">startedAt</span>
+            <span class="val">2026-07-19T${e.time}Z</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+function renderAll() {
+  const list = document.getElementById('execList');
+  list.innerHTML = '';
+  const filtered = executions.filter(e => currentFilter === 'all' || e.result === currentFilter);
+  filtered.forEach((e, i) => list.appendChild(renderRow(e, i)));
+  document.getElementById('shownCount').textContent = filtered.length;
+
+  // animate bars
+  if (!reduceMotion) {
+    setTimeout(() => {
+      list.querySelectorAll('.duration-bar').forEach(bar => {
+        bar.style.width = bar.dataset.pct + '%';
+      });
+    }, 80);
+  } else {
+    list.querySelectorAll('.duration-bar').forEach(bar => {
+      bar.style.width = bar.dataset.pct + '%';
+    });
+  }
+
+  // wire expand
+  list.querySelectorAll('.exec-row').forEach(row => {
+    row.addEventListener('click', () => {
+      row.classList.toggle('expanded');
+    });
+  });
+}
+
+// Filters
+document.querySelectorAll('#resultFilter .opt-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#resultFilter .opt-pill').forEach(x => {
+      x.classList.remove('active');
+      x.classList.remove('primary');
+      x.classList.remove('success');
+      x.classList.remove('short');
+    });
+    p.classList.add('active');
+    const r = p.dataset.result;
+    if (r === 'all') p.classList.add('primary');
+    else if (r === 'SUCCESS') p.classList.add('success');
+    else p.classList.add('short');
+    currentFilter = r;
+    renderAll();
+  });
+});
+
+document.querySelectorAll('#rangeFilter .opt-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#rangeFilter .opt-pill').forEach(x => {
+      x.classList.remove('active');
+      x.classList.remove('primary');
+    });
+    p.classList.add('active');
+    p.classList.add('primary');
+  });
+});
+
+// count-up
+function countUp(el) {
+  const target = +el.dataset.count;
+  if (reduceMotion) { el.textContent = target.toLocaleString(); return; }
+  const start = performance.now();
+  const dur = 700;
+  function tick(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const v = Math.floor(target * (1 - Math.pow(1 - p, 3)));
+    el.textContent = v.toLocaleString();
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+document.querySelectorAll('.stat-num .num[data-count]').forEach(countUp);
+
+renderAll();
+
+// Live: prepend new execution every 10s
+const liveTemplates = [
+  { trigger: 'CDC', pipeline: 'high-amount-order-alert', pipelineMeta: 'v3 · PUBLISHED', duration: 34, durationPct: 17, result: 'SUCCESS', event: { entity: 'orders', op: 'INSERT', amount: 12500, orderId: '20260719-X8801' } },
+  { trigger: 'CDC', pipeline: 'order-failure-rate-warn', pipelineMeta: 'v5 · PUBLISHED', duration: 18, durationPct: 9, result: 'SHORT_CIRCUITED', event: { entity: 'order-service', op: 'INSERT', failureRate: 0.012 } },
+  { trigger: 'CRON', pipeline: 'kafka-lag-monitor', pipelineMeta: 'v3 · PUBLISHED', duration: 46, durationPct: 23, result: 'SUCCESS', event: { entity: 'kafka-orders-topic', op: 'METRIC', lag: 4200 } },
+];
+let liveIdx = 0;
+if (!reduceMotion) {
+  setInterval(() => {
+    const t = liveTemplates[liveIdx % liveTemplates.length];
+    liveIdx++;
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const e = { id: 'live_' + Date.now(), time, rel: '刚刚', ...t };
+    if (currentFilter !== 'all' && e.result !== currentFilter) return;
+    const list = document.getElementById('execList');
+    const card = renderRow(e, 0);
+    card.style.animationDelay = '0ms';
+    list.insertBefore(card, list.firstChild);
+    setTimeout(() => {
+      card.querySelector('.duration-bar').style.width = e.durationPct + '%';
+    }, 50);
+    card.querySelector('.exec-row').addEventListener('click', function() {
+      this.classList.toggle('expanded');
+    });
+    // update shown count
+    document.getElementById('shownCount').textContent = list.children.length;
+  }, 10000);
+}
+</script>
+
+</body>
+</html>

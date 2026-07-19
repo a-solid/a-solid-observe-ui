@@ -1,0 +1,1152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 告警列表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-foreground: #1E3A8A;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+  --color-ring: #1E40AF;
+  --color-destructive: #DC2626;
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --status-firing: #DC2626;
+  --status-resolved: #16A34A;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: '';
+  position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+
+.namespace-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: all 200ms var(--ease);
+}
+.namespace-switch:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border); }
+.namespace-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--status-resolved);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
+
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  border: none;
+  background: transparent;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.28);
+}
+
+/* === Layout === */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* === Page header === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+}
+.page-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.page-subtitle .num { color: var(--color-text); font-weight: 500; }
+
+.connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(22, 163, 74, 0.10);
+  border: 1px solid rgba(22, 163, 74, 0.22);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: #15803D;
+}
+.live-dot {
+  width: 8px; height: 8px;
+  background: var(--status-resolved);
+  border-radius: 50%;
+  animation: pulse 2s var(--ease) infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+}
+
+/* === Severity overview === */
+.severity-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+}
+.sev-card {
+  position: relative;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.sev-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.sev-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--sev-color);
+}
+.sev-card.critical { --sev-color: var(--severity-critical); }
+.sev-card.warning  { --sev-color: var(--severity-warning); }
+.sev-card.info     { --sev-color: var(--severity-info); }
+.sev-card.total    { --sev-color: var(--color-secondary); }
+.sev-card.active {
+  background: rgba(255,255,255,0.9);
+  box-shadow: var(--shadow-md);
+  border-color: var(--sev-color);
+}
+.sev-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.sev-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sev-icon {
+  width: 14px; height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sev-color);
+}
+.sev-count {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.sev-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+.sev-meta .firing { color: var(--status-firing); font-weight: 500; }
+
+/* === Filters === */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+.filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.severity-picker {
+  display: inline-flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.sev-pill {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 200ms var(--ease);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sev-pill:hover { color: var(--color-text); }
+.sev-pill.active.crit { background: rgba(220, 38, 38, 0.12); color: var(--severity-critical); }
+.sev-pill.active.warn { background: rgba(217, 119, 6, 0.12); color: var(--severity-warning); }
+.sev-pill.active.info { background: rgba(14, 165, 233, 0.12); color: var(--severity-info); }
+
+.status-picker, .team-picker, .range-picker {
+  display: inline-flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.opt-pill {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 200ms var(--ease);
+  font-family: inherit;
+}
+.opt-pill:hover { color: var(--color-text); }
+.opt-pill.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.25);
+}
+
+.filter-spacer { flex: 1; }
+
+.search-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  min-width: 220px;
+}
+.search-box svg { width: 14px; height: 14px; color: var(--color-text-muted); flex-shrink: 0; }
+.search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+}
+.search-box input::placeholder { color: var(--color-text-muted); }
+
+/* === Alert list === */
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.alert-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4px 56px 1fr auto;
+  gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  animation: slideInFromTop 360ms var(--ease);
+}
+.alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.alert-card.resolved {
+  opacity: 0.55;
+}
+.alert-card.resolved:hover { opacity: 0.85; }
+
+@keyframes slideInFromTop {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.alert-card.resolved { animation-name: slideInFromTopDim; }
+@keyframes slideInFromTopDim {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 0.55; transform: translateY(0); }
+}
+
+.alert-card.new {
+  animation: slideInFlash 700ms var(--ease);
+}
+@keyframes slideInFlash {
+  0% { opacity: 0; transform: translateY(-16px); background: rgba(255,255,255,0.7); }
+  30% { opacity: 1; transform: translateY(0); background: rgba(217, 119, 6, 0.18); }
+  100% { opacity: 1; background: rgba(255,255,255,0.7); }
+}
+.alert-card.resolved.new {
+  animation: slideInFlashDim 700ms var(--ease);
+}
+@keyframes slideInFlashDim {
+  0% { opacity: 0; transform: translateY(-16px); }
+  30% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0.55; transform: translateY(0); }
+}
+
+.alert-bar {
+  background: var(--sev-color);
+  position: relative;
+  height: 100%;
+  min-height: 64px;
+  border-radius: 2px;
+}
+.alert-card.critical .alert-bar {
+  animation: breathingBar 2.4s var(--ease) infinite;
+}
+@keyframes breathingBar {
+  0%, 100% { box-shadow: 0 0 0 0 var(--sev-color); opacity: 1; }
+  50% { box-shadow: 0 0 12px 2px var(--sev-color); opacity: 0.85; }
+}
+
+.alert-card.critical { --sev-color: var(--severity-critical); }
+.alert-card.warning  { --sev-color: var(--severity-warning); }
+.alert-card.info     { --sev-color: var(--severity-info); }
+
+.alert-card.critical.firing {
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.18), var(--shadow-sm);
+}
+.alert-card.critical.firing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.3);
+  animation: ringPulse 2.4s var(--ease) infinite;
+}
+@keyframes ringPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.18); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.05); }
+}
+
+.alert-sev-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.sev-shape {
+  width: 36px; height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+}
+.sev-shape svg {
+  width: 22px; height: 22px;
+  color: var(--sev-color);
+}
+.sev-shape.crit svg { filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.3)); }
+.sev-shape.warn svg { filter: drop-shadow(0 0 4px rgba(217, 119, 6, 0.25)); }
+
+.alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.alert-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.alert-fp {
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.alert-entity {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', ui-monospace, monospace;
+}
+.alert-entity strong { color: var(--color-text); font-weight: 500; }
+.alert-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.alert-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.alert-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.alert-meta-item svg { width: 12px; height: 12px; }
+.alert-meta-item .num { color: var(--color-text); font-weight: 500; }
+.alert-meta-item.dedup .num { color: var(--severity-warning); font-weight: 600; }
+
+.pipeline-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(30, 64, 175, 0.12);
+}
+.pipeline-tag svg { width: 11px; height: 11px; }
+
+.team-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.7);
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--color-border-soft);
+}
+
+.alert-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.status-badge.firing {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--status-firing);
+}
+.status-badge.firing::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--status-firing);
+  border-radius: 50%;
+  animation: pulse-firing 1.4s var(--ease) infinite;
+}
+.status-badge.resolved {
+  background: rgba(22, 163, 74, 0.10);
+  color: #15803D;
+}
+@keyframes pulse-firing {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.alert-time {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', ui-monospace, monospace;
+}
+.alert-time strong { color: var(--color-text); font-weight: 500; }
+
+/* === Empty / footer === */
+.list-footer {
+  padding: var(--space-lg);
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 768px) {
+  .page { padding: var(--space-md); }
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .severity-overview { grid-template-columns: repeat(2, 1fr); }
+  .alert-card { grid-template-columns: 4px 1fr; padding: var(--space-md); }
+  .alert-sev-icon { display: none; }
+  .alert-right { align-items: flex-start; min-width: 0; flex-direction: row; justify-content: space-between; width: 100%; }
+  .page-header { align-items: flex-start; }
+  .filters { padding: var(--space-md); }
+  .namespace-switch, .time-range { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="c1-dashboard.html" class="brand">
+      <span class="brand-mark"></span>
+      <span>A-Solid Observe</span>
+    </a>
+    <div class="namespace-switch" title="切换 namespace">
+      <span class="namespace-dot"></span>
+      <span class="mono">ops</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <nav class="role-tabs">
+      <a href="c1-dashboard.html" class="role-tab">大盘</a>
+      <a href="b1-alerts.html" class="role-tab active">告警</a>
+      <a href="a1-pipelines.html" class="role-tab">配置</a>
+    </nav>
+    <div class="nav-spacer"></div>
+    <div class="connection-pill">
+      <span class="live-dot"></span>
+      <span>实时 · 已连接</span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">告警列表</h1>
+      <p class="page-subtitle"><span class="num" id="totalAlerts">64</span> 条告警 · <span class="num" id="firingCount">8</span> FIRING · <span class="num" id="resolvedCount">56</span> RESOLVED</p>
+    </div>
+  </div>
+
+  <!-- Severity overview -->
+  <div class="severity-overview">
+    <div class="sev-card total active" data-sev="all">
+      <div class="sev-card-head">
+        <div class="sev-label">全部告警</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      </div>
+      <div class="sev-count mono" data-count="64">0</div>
+      <div class="sev-meta">最近 24h</div>
+    </div>
+    <div class="sev-card critical" data-sev="CRITICAL">
+      <div class="sev-card-head">
+        <div class="sev-label"><span class="sev-icon">▲</span>CRITICAL</div>
+      </div>
+      <div class="sev-count mono" data-count="12">0</div>
+      <div class="sev-meta"><span class="firing num">7</span> firing · <span class="num">5</span> resolved</div>
+    </div>
+    <div class="sev-card warning" data-sev="WARNING">
+      <div class="sev-card-head">
+        <div class="sev-label"><span class="sev-icon">△</span>WARNING</div>
+      </div>
+      <div class="sev-count mono" data-count="47">0</div>
+      <div class="sev-meta"><span class="firing num">1</span> firing · <span class="num">46</span> resolved</div>
+    </div>
+    <div class="sev-card info" data-sev="INFO">
+      <div class="sev-card-head">
+        <div class="sev-label"><span class="sev-icon">○</span>INFO</div>
+      </div>
+      <div class="sev-count mono" data-count="5">0</div>
+      <div class="sev-meta"><span class="num">0</span> firing · <span class="num">5</span> resolved</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">严重度</span>
+      <div class="severity-picker" id="sevPicker">
+        <button class="sev-pill active" data-sev="all">全部</button>
+        <button class="sev-pill crit" data-sev="CRITICAL"><span>▲</span> CRITICAL</button>
+        <button class="sev-pill warn" data-sev="WARNING"><span>△</span> WARNING</button>
+        <button class="sev-pill info" data-sev="INFO"><span>○</span> INFO</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">状态</span>
+      <div class="status-picker" id="statusPicker">
+        <button class="opt-pill active" data-status="all">全部</button>
+        <button class="opt-pill" data-status="FIRING">FIRING</button>
+        <button class="opt-pill" data-status="RESOLVED">RESOLVED</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">团队</span>
+      <div class="team-picker" id="teamPicker">
+        <button class="opt-pill active" data-team="all">全部</button>
+        <button class="opt-pill" data-team="payment">支付</button>
+        <button class="opt-pill" data-team="risk">风控</button>
+        <button class="opt-pill" data-team="ops">运维</button>
+      </div>
+    </div>
+
+    <div class="filter-spacer"></div>
+
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input type="text" placeholder="搜索 fingerprint / entity…" id="searchInput" />
+    </div>
+  </div>
+
+  <!-- Alert list -->
+  <div class="alert-list" id="alertList">
+    <!-- Rendered by JS -->
+  </div>
+
+  <div class="list-footer">
+    显示 <span class="num" id="shownCount">14</span> / <span class="num">64</span> 条 · 自动加载更多
+  </div>
+</main>
+
+<script>
+// === Mock alerts data ===
+// API: GET /api/v1/alerts?namespace=ops&status=&team=&pipeline_id=&severity=&from=&to=&limit=
+const ICON_CRIT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>';
+const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3L3 20h18L12 3z" stroke-linejoin="round"/><line x1="12" y1="10" x2="12" y2="14"/><circle cx="12" cy="17" r="0.8" fill="currentColor"/></svg>';
+const ICON_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.9" fill="currentColor"/></svg>';
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const ICON_DEDUP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9"/><path d="M9 12l2 2 4-4"/></svg>';
+const ICON_PIPELINE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>';
+const ICON_USERS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.31 2.69-6 6-6s6 2.69 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.8M21 20c0-2.42-1.43-4.5-3.5-5.4"/></svg>';
+
+const alerts = [
+  {
+    id: 'a1', severity: 'CRITICAL', status: 'FIRING',
+    fingerprint: 'high-amount-order',
+    entity: 'orders',
+    description: '订单金额 ¥58,200 超过阈值 10,000，触发高额订单告警。来源：CDC events，订单 #20260719-X8742。',
+    team: 'payment', teamLabel: '支付',
+    pipeline: 'high-amount-order-alert',
+    startedAt: '2 分钟前', dedupCount: 3,
+    new: false
+  },
+  {
+    id: 'a2', severity: 'CRITICAL', status: 'FIRING',
+    fingerprint: 'payment-gateway-timeout',
+    entity: 'payment-gateway',
+    description: '支付网关 P99 延迟 4.2s，连续 5 分钟超阈值 1.5s。下游服务疑似异常。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'gateway-latency-alert',
+    startedAt: '5 分钟前', dedupCount: 8,
+    new: false
+  },
+  {
+    id: 'a3', severity: 'CRITICAL', status: 'FIRING',
+    fingerprint: 'risk-score-anomaly',
+    entity: 'user-risk-score',
+    description: '用户 user_88210 风险分 92（阈值 80），3 笔交易 1 分钟内连续高风险，疑似欺诈。',
+    team: 'risk', teamLabel: '风控',
+    pipeline: 'risk-score-monitor',
+    startedAt: '8 分钟前', dedupCount: 3,
+    new: false
+  },
+  {
+    id: 'a4', severity: 'CRITICAL', status: 'FIRING',
+    fingerprint: 'db-conn-pool-exhausted',
+    entity: 'pg-primary',
+    description: '主库连接池使用率 97%（阈值 90%），活动连接 195/200。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'db-health-monitor',
+    startedAt: '12 分钟前', dedupCount: 2,
+    new: false
+  },
+  {
+    id: 'a5', severity: 'WARNING', status: 'FIRING',
+    fingerprint: 'order-failure-rate',
+    entity: 'order-service',
+    description: '订单创建失败率 3.8%（阈值 3%），近 10 分钟持续上升。',
+    team: 'payment', teamLabel: '支付',
+    pipeline: 'order-failure-rate-warn',
+    startedAt: '18 分钟前', dedupCount: 4,
+    new: false
+  },
+  {
+    id: 'a6', severity: 'CRITICAL', status: 'RESOLVED',
+    fingerprint: 'kafka-consumer-lag',
+    entity: 'kafka-orders-topic',
+    description: 'orders topic 消费者 lag 达 24k（阈值 10k），消费速度跟不上生产。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'kafka-lag-monitor',
+    startedAt: '32 分钟前', dedupCount: 6,
+    resolvedAt: '已恢复 · 5 分钟前',
+    new: false
+  },
+  {
+    id: 'a7', severity: 'WARNING', status: 'FIRING',
+    fingerprint: 'inventory-mismatch',
+    entity: 'inventory-sku-2241',
+    description: 'SKU 2241 库存与订单系统不一致，差异 -127 件。',
+    team: 'payment', teamLabel: '支付',
+    pipeline: 'inventory-mismatch-warn',
+    startedAt: '40 分钟前', dedupCount: 1,
+    new: false
+  },
+  {
+    id: 'a8', severity: 'CRITICAL', status: 'RESOLVED',
+    fingerprint: 'redis-memory-pressure',
+    entity: 'redis-cluster',
+    description: 'Redis 集群内存使用 88%（阈值 85%），触发主从切换前预警。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'redis-memory-monitor',
+    startedAt: '1 小时前', dedupCount: 5,
+    resolvedAt: '已恢复 · 28 分钟前',
+    new: false
+  },
+  {
+    id: 'a9', severity: 'WARNING', status: 'RESOLVED',
+    fingerprint: 'slow-query-spike',
+    entity: 'pg-replica-2',
+    description: '慢查询数 142/min（阈值 100/min），集中在 orders 表 GROUP BY。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'slow-query-monitor',
+    startedAt: '2 小时前', dedupCount: 9,
+    resolvedAt: '已恢复 · 1 小时前',
+    new: false
+  },
+  {
+    id: 'a10', severity: 'INFO', status: 'FIRING',
+    fingerprint: 'deploy-notice',
+    entity: 'order-service',
+    description: 'order-service 已部署 v2.4.1（灰度 30%），观察期 15 分钟。',
+    team: 'payment', teamLabel: '支付',
+    pipeline: 'deploy-tracking',
+    startedAt: '2 小时前', dedupCount: 1,
+    new: false
+  },
+  {
+    id: 'a11', severity: 'WARNING', status: 'RESOLVED',
+    fingerprint: 'cpu-throttle',
+    entity: 'node-app-3',
+    description: 'CPU 节流触发（78% 持续 5 分钟），实例已自动扩容。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'cpu-throttle-warn',
+    startedAt: '3 小时前', dedupCount: 2,
+    resolvedAt: '已恢复 · 2 小时前',
+    new: false
+  },
+  {
+    id: 'a12', severity: 'CRITICAL', status: 'RESOLVED',
+    fingerprint: 'payment-cb-anomaly',
+    entity: 'payment-callback',
+    description: '回调成功率 87%（阈值 95%），疑似三方接口抖动。',
+    team: 'payment', teamLabel: '支付',
+    pipeline: 'payment-callback-monitor',
+    startedAt: '4 小时前', dedupCount: 12,
+    resolvedAt: '已恢复 · 3 小时前',
+    new: false
+  },
+  {
+    id: 'a13', severity: 'INFO', status: 'RESOLVED',
+    fingerprint: 'cron-job-finished',
+    entity: 'daily-report-job',
+    description: '日报 cron 任务执行完成，处理 12,403 条订单，耗时 2m18s。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'cron-job-tracker',
+    startedAt: '5 小时前', dedupCount: 0,
+    resolvedAt: '已恢复 · 5 小时前',
+    new: false
+  },
+  {
+    id: 'a14', severity: 'WARNING', status: 'RESOLVED',
+    fingerprint: 'rate-limit-hit',
+    entity: 'api-gateway',
+    description: 'API 网关 rate-limit 触发 1.2k 次/min（阈值 800），来自 IP 段 10.20.x。',
+    team: 'risk', teamLabel: '风控',
+    pipeline: 'rate-limit-warn',
+    startedAt: '6 小时前', dedupCount: 7,
+    resolvedAt: '已恢复 · 5 小时前',
+    new: false
+  },
+];
+
+const sevShape = {
+  CRITICAL: ICON_CRIT,
+  WARNING: ICON_WARN,
+  INFO: ICON_INFO,
+};
+const sevClass = {
+  CRITICAL: 'critical',
+  WARNING: 'warning',
+  INFO: 'info',
+};
+const sevShapeClass = {
+  CRITICAL: 'crit',
+  WARNING: 'warn',
+  INFO: '',
+};
+
+let currentFilters = { sev: 'all', status: 'all', team: 'all', q: '' };
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function passes(a) {
+  if (currentFilters.sev !== 'all' && a.severity !== currentFilters.sev) return false;
+  if (currentFilters.status !== 'all' && a.status !== currentFilters.status) return false;
+  if (currentFilters.team !== 'all' && a.team !== currentFilters.team) return false;
+  if (currentFilters.q) {
+    const q = currentFilters.q.toLowerCase();
+    if (!a.fingerprint.toLowerCase().includes(q) && !a.entity.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+
+function renderCard(a, isNew=false) {
+  const card = document.createElement('article');
+  card.className = `alert-card ${sevClass[a.severity]} ${a.status.toLowerCase()}${isNew ? ' new' : ''}`;
+  card.dataset.id = a.id;
+  card.dataset.severity = a.severity;
+  card.dataset.status = a.status;
+  card.dataset.team = a.team;
+
+  const sevSvg = sevShape[a.severity];
+  const sevCls = sevShapeClass[a.severity];
+  const time = a.status === 'RESOLVED' ? (a.resolvedAt || a.startedAt) : a.startedAt;
+
+  card.innerHTML = `
+    <div class="alert-bar"></div>
+    <div class="alert-sev-icon">
+      <div class="sev-shape ${sevCls}">${sevSvg}</div>
+    </div>
+    <div class="alert-body">
+      <div class="alert-title-row">
+        <span class="alert-fp">${a.fingerprint}</span>
+        <span class="pipeline-tag">${ICON_PIPELINE}${a.pipeline}</span>
+        <span class="team-tag">${ICON_USERS}${a.teamLabel}</span>
+      </div>
+      <div class="alert-entity">labels.entity = <strong>"${a.entity}"</strong></div>
+      <div class="alert-desc">${a.description}</div>
+      <div class="alert-meta">
+        <span class="alert-meta-item">${ICON_CLOCK}<strong>${time}</strong></span>
+        ${a.dedupCount > 0 ? `<span class="alert-meta-item dedup">${ICON_DEDUP}dedupCount = <span class="num">${a.dedupCount}</span></span>` : ''}
+        ${a.status === 'RESOLVED' ? `<span class="alert-meta-item" style="color:#15803D;">✓ resolved</span>` : ''}
+      </div>
+    </div>
+    <div class="alert-right">
+      <span class="status-badge ${a.status.toLowerCase()}">${a.status}</span>
+      <span class="alert-time">startsAt <strong>${a.startedAt}</strong></span>
+    </div>
+  `;
+  return card;
+}
+
+function renderAll() {
+  const list = document.getElementById('alertList');
+  list.innerHTML = '';
+  const filtered = alerts.filter(passes);
+  // sort: CRITICAL+FIRING first, then FIRING, then RESOLVED
+  const rank = (a) => {
+    const sevRank = a.severity === 'CRITICAL' ? 0 : a.severity === 'WARNING' ? 1 : 2;
+    const stRank = a.status === 'FIRING' ? 0 : 1;
+    return sevRank * 10 + stRank;
+  };
+  filtered.sort((a, b) => rank(a) - rank(b));
+  filtered.forEach((a, i) => {
+    const card = renderCard(a);
+    if (!reduceMotion) card.style.animationDelay = `${Math.min(i * 35, 400)}ms`;
+    list.appendChild(card);
+  });
+  document.getElementById('shownCount').textContent = filtered.length;
+}
+
+function countUp(el) {
+  const target = +el.dataset.count;
+  if (reduceMotion) { el.textContent = target; return; }
+  const start = performance.now();
+  const dur = 700;
+  function tick(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const v = Math.floor(target * (1 - Math.pow(1 - p, 3)));
+    el.textContent = v;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+document.querySelectorAll('.sev-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.sev-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    const sev = card.dataset.sev;
+    currentFilters.sev = sev.toLowerCase() === 'all' ? 'all' : sev;
+    // sync severity picker
+    document.querySelectorAll('#sevPicker .sev-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.sev === sev);
+    });
+    renderAll();
+  });
+});
+
+document.querySelectorAll('#sevPicker .sev-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#sevPicker .sev-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    const sev = p.dataset.sev;
+    currentFilters.sev = sev.toLowerCase() === 'all' ? 'all' : sev;
+    // sync sev cards
+    document.querySelectorAll('.sev-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.sev === sev);
+    });
+    renderAll();
+  });
+});
+
+document.querySelectorAll('#statusPicker .opt-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#statusPicker .opt-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    currentFilters.status = p.dataset.status.toLowerCase() === 'all' ? 'all' : p.dataset.status;
+    renderAll();
+  });
+});
+
+document.querySelectorAll('#teamPicker .opt-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#teamPicker .opt-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    currentFilters.team = p.dataset.team;
+    renderAll();
+  });
+});
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  currentFilters.q = e.target.value.trim();
+  renderAll();
+});
+
+// initial render
+renderAll();
+// count-up
+document.querySelectorAll('.sev-count').forEach(countUp);
+
+// === Simulate live new alerts ===
+const incoming = [
+  {
+    id: 'live1', severity: 'CRITICAL', status: 'FIRING',
+    fingerprint: 'order-burst-anomaly',
+    entity: 'order-service',
+    description: '订单创建速率 8.2k/min（基线 3k），疑似流量异常或刷单。',
+    team: 'payment', teamLabel: '支付',
+    pipeline: 'order-burst-detector',
+    startedAt: '刚刚', dedupCount: 1,
+  },
+  {
+    id: 'live2', severity: 'WARNING', status: 'FIRING',
+    fingerprint: 'cdc-lag-spikes',
+    entity: 'cdc-orders',
+    description: 'CDC 消费 lag 突增到 5.4k，延迟 12s。',
+    team: 'ops', teamLabel: '运维',
+    pipeline: 'cdc-lag-monitor',
+    startedAt: '刚刚', dedupCount: 1,
+  },
+];
+
+let liveIdx = 0;
+if (!reduceMotion) {
+  setInterval(() => {
+    const next = incoming[liveIdx % incoming.length];
+    liveIdx++;
+    // clone with new id so re-renders are unique
+    const a = { ...next, id: next.id + '_' + Date.now(), new: true };
+    if (!passes(a)) return; // skip if filtered out
+    alerts.unshift(a);
+    const list = document.getElementById('alertList');
+    const card = renderCard(a, true);
+    list.insertBefore(card, list.firstChild);
+    // keep total reasonable
+    if (alerts.length > 24) alerts.pop();
+    document.getElementById('shownCount').textContent = list.children.length;
+    // update total counter
+    const totalEl = document.getElementById('totalAlerts');
+    const firingEl = document.getElementById('firingCount');
+    if (totalEl) totalEl.textContent = +totalEl.textContent + 1;
+    if (firingEl && a.status === 'FIRING') firingEl.textContent = +firingEl.textContent + 1;
+  }, 12000);
+}
+</script>
+</body>
+</html>

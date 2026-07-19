@@ -1,0 +1,1390 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · Subscription 编辑器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+
+  --source-cdc: #1E40AF;
+  --source-cron: #D97706;
+  --source-api: #0EA5E9;
+
+  --action-run: #16A34A;
+  --action-schedule: #D97706;
+  --action-cancel: #DC2626;
+
+  --node-source: #1E40AF;
+  --node-sub: #D97706;
+  --node-pipe: #3B82F6;
+  --node-alert: #DC2626;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex; align-items: center; gap: var(--space-xl);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.crumbs {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--color-text-muted);
+}
+.crumbs a { color: var(--color-text-muted); text-decoration: none; transition: color 200ms var(--ease); }
+.crumbs a:hover { color: var(--color-primary); }
+.crumbs .sep { opacity: 0.5; }
+.crumbs .current { color: var(--color-text); font-weight: 600; }
+.nav-spacer { flex: 1; }
+
+.toolbar-actions { display: inline-flex; gap: 8px; }
+.btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn svg { width: 13px; height: 13px; }
+.btn-ghost {
+  background: rgba(255,255,255,0.7);
+  border-color: var(--color-border-soft);
+  color: var(--color-text);
+}
+.btn-ghost:hover {
+  background: #fff;
+  border-color: var(--color-secondary);
+}
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.28);
+}
+.btn-primary:hover {
+  background: #1E3A8A;
+  transform: translateY(-1px);
+}
+
+/* === Editor layout === */
+.editor-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-2xl) var(--space-2xl);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.editor-title-block {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-sm);
+  flex-wrap: wrap;
+}
+.editor-title {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.editor-title .draft-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--color-accent);
+  border: 1px dashed rgba(217, 119, 6, 0.35);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+.editor-title .draft-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.18), transparent);
+  animation: shimmer 2.5s linear infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.editor-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.editor-meta {
+  display: inline-flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.editor-meta .kv { display: inline-flex; gap: 6px; align-items: center; }
+.editor-meta .kv strong { color: var(--color-text); font-family: 'Fira Code', monospace; font-weight: 600; }
+
+/* === Form column === */
+.form-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.form-section {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 200ms var(--ease);
+}
+.form-section:hover {
+  box-shadow: var(--shadow-md);
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-md);
+}
+.section-num {
+  width: 24px; height: 24px;
+  border-radius: 8px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Fira Code', monospace;
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  flex: 1;
+}
+.section-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* === Pipeline binding chips === */
+.binding-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: var(--space-md);
+  background: rgba(30, 64, 175, 0.04);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  min-height: 56px;
+}
+.binding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 12px;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.10), rgba(59, 130, 246, 0.14));
+  border: 1px solid rgba(30, 64, 175, 0.22);
+  color: var(--color-primary);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Fira Code', monospace;
+  transition: all 200ms var(--ease);
+  animation: chipIn 320ms var(--ease) both;
+}
+@keyframes chipIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+.binding-chip.removing {
+  animation: chipOut 220ms var(--ease) forwards;
+}
+@keyframes chipOut {
+  to { opacity: 0; transform: scale(0.6) translateY(-4px); }
+}
+.binding-chip .chip-icon {
+  width: 14px; height: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.binding-chip .chip-icon svg { width: 100%; height: 100%; }
+.binding-chip .chip-x {
+  cursor: pointer;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  opacity: 0.6;
+  transition: all 150ms var(--ease);
+}
+.binding-chip .chip-x:hover {
+  opacity: 1;
+  background: rgba(220, 38, 38, 0.18);
+  color: var(--action-cancel);
+}
+.binding-chip .chip-x svg { width: 9px; height: 9px; }
+
+.add-binding {
+  padding: 7px 14px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px dashed rgba(217, 119, 6, 0.4);
+  color: var(--color-accent);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 200ms var(--ease);
+}
+.add-binding:hover {
+  background: rgba(217, 119, 6, 0.16);
+  transform: translateY(-1px);
+}
+.add-binding svg { width: 12px; height: 12px; }
+
+.binding-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.binding-count {
+  color: var(--color-accent);
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+
+/* === Source type tabs === */
+.source-tabs {
+  display: inline-flex;
+  background: rgba(30, 64, 175, 0.06);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: var(--space-md);
+}
+.source-tab {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.source-tab.active {
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.12);
+}
+.source-tab svg { width: 12px; height: 12px; }
+
+.source-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-group.full { grid-column: 1 / -1; }
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.field-input {
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Fira Code', monospace;
+  color: var(--color-text);
+  outline: none;
+  transition: all 200ms var(--ease);
+}
+.field-input:focus {
+  border-color: var(--color-secondary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+}
+.op-types {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.op-chip {
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: rgba(255,255,255,0.6);
+  color: var(--color-text-muted);
+  transition: all 200ms var(--ease);
+}
+.op-chip.on {
+  background: rgba(30, 64, 175, 0.12);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* === Condition tree === */
+.cond-tree {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+}
+.cond-node {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cond-container {
+  border-left: 2px solid rgba(30, 64, 175, 0.18);
+  padding-left: 14px;
+  margin-left: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+.cond-container::before {
+  content: attr(data-op);
+  position: absolute;
+  left: -16px;
+  top: -10px;
+  padding: 1px 6px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+.cond-container.or { border-left-color: rgba(217, 119, 6, 0.3); }
+.cond-container.or::before { background: var(--color-accent); }
+
+.cond-leaf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  position: relative;
+  transition: all 200ms var(--ease);
+  align-self: flex-start;
+}
+.cond-leaf:hover {
+  border-color: var(--color-secondary);
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.10);
+}
+.cond-leaf .leaf-type {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+.cond-leaf.compare .leaf-type {
+  background: rgba(30, 64, 175, 0.12);
+  color: var(--color-primary);
+}
+.cond-leaf.in .leaf-type {
+  background: rgba(14, 165, 233, 0.14);
+  color: #0284C7;
+}
+.cond-leaf .leaf-field {
+  font-weight: 600;
+  color: var(--color-text);
+}
+.cond-leaf .leaf-op {
+  padding: 2px 7px;
+  background: rgba(217, 119, 6, 0.10);
+  color: var(--color-accent);
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+}
+.cond-leaf .leaf-value {
+  color: var(--action-run);
+  font-weight: 600;
+}
+.cond-leaf .leaf-remove {
+  margin-left: 6px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: rgba(100, 116, 139, 0.10);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 150ms var(--ease);
+}
+.cond-leaf .leaf-remove:hover {
+  background: rgba(220, 38, 38, 0.18);
+  color: var(--action-cancel);
+  opacity: 1;
+}
+.cond-leaf .leaf-remove svg { width: 9px; height: 9px; }
+
+.cond-add {
+  align-self: flex-start;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 200ms var(--ease);
+}
+.cond-add:hover {
+  border-color: var(--color-secondary);
+  color: var(--color-primary);
+}
+.cond-add svg { width: 10px; height: 10px; }
+
+/* === ActionType === */
+.action-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.action-card {
+  padding: 12px;
+  background: rgba(255,255,255,0.6);
+  border: 1.5px solid var(--color-border-soft);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  text-align: center;
+}
+.action-card:hover { transform: translateY(-2px); }
+.action-card .ac-icon {
+  width: 28px; height: 28px;
+  margin: 0 auto 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(100, 116, 139, 0.10);
+  color: var(--color-text-muted);
+}
+.action-card .ac-icon svg { width: 14px; height: 14px; }
+.action-card .ac-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.action-card .ac-desc {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.action-card.run.active {
+  border-color: var(--action-run);
+  background: rgba(22, 163, 74, 0.08);
+}
+.action-card.run.active .ac-icon { background: rgba(22, 163, 74, 0.16); color: var(--action-run); }
+.action-card.schedule.active {
+  border-color: var(--action-schedule);
+  background: rgba(217, 119, 6, 0.08);
+}
+.action-card.schedule.active .ac-icon { background: rgba(217, 119, 6, 0.18); color: var(--action-schedule); }
+.action-card.cancel.active {
+  border-color: var(--action-cancel);
+  background: rgba(220, 38, 38, 0.08);
+}
+.action-card.cancel.active .ac-icon { background: rgba(220, 38, 38, 0.16); color: var(--action-cancel); }
+
+/* === Preview column === */
+.preview-col {
+  position: sticky;
+  top: 100px;
+}
+.preview-card {
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  position: relative;
+  overflow: hidden;
+}
+.preview-card::before {
+  content: '';
+  position: absolute;
+  top: -100px; right: -100px;
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.10), transparent 70%);
+  pointer-events: none;
+}
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.preview-title svg { width: 14px; height: 14px; color: var(--color-accent); }
+.preview-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--action-run);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.preview-live .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--action-run);
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16);
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16); }
+  50% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0.04); }
+}
+
+/* === Fork diagram === */
+.fork-diagram {
+  position: relative;
+  padding: var(--space-md) 0 var(--space-sm);
+}
+.fork-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.fork-energized {
+  stroke-dasharray: 6 8;
+  animation: flow 1.2s linear infinite;
+}
+@keyframes flow {
+  to { stroke-dashoffset: -28; }
+}
+.particle {
+  fill: var(--color-accent);
+  filter: drop-shadow(0 0 6px rgba(217, 119, 6, 0.6));
+}
+
+.node-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--color-text);
+  font-family: 'Fira Sans', sans-serif;
+}
+.node-sub {
+  font-size: 9px;
+  fill: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+}
+
+.fork-nodes {
+  display: flex;
+  justify-content: flex-end;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.fork-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(30, 64, 175, 0.08));
+  border: 1px solid rgba(30, 64, 175, 0.18);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 250ms var(--ease);
+  animation: branchIn 380ms var(--ease) both;
+  position: relative;
+}
+@keyframes branchIn {
+  from { opacity: 0; transform: translateX(20px) scale(0.9); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+.fork-pipeline.removing {
+  animation: branchOut 240ms var(--ease) forwards;
+}
+@keyframes branchOut {
+  to { opacity: 0; transform: translateX(-20px) scale(0.85); }
+}
+.fork-pipeline:hover {
+  border-color: var(--color-secondary);
+  transform: translateX(-3px);
+  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.14);
+}
+.fork-pipeline .fp-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--node-pipe);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  flex-shrink: 0;
+}
+.fork-pipeline .fp-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+  color: var(--color-text);
+}
+.fork-pipeline .fp-arrow {
+  color: var(--color-text-muted);
+  width: 12px; height: 12px;
+  transition: transform 200ms var(--ease);
+}
+.fork-pipeline.expanded .fp-arrow {
+  transform: rotate(90deg);
+}
+.fork-pipeline .fp-detail {
+  display: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(30, 64, 175, 0.18);
+  width: 100%;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+  line-height: 1.6;
+}
+.fork-pipeline.expanded .fp-detail {
+  display: block;
+}
+.fork-pipeline .fp-row { display: flex; justify-content: space-between; }
+.fork-pipeline .fp-alert-out {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.10);
+  color: var(--action-cancel);
+  font-size: 10px;
+  font-weight: 600;
+}
+.fork-pipeline .fp-alert-out svg { width: 9px; height: 9px; }
+.fork-pipeline .fp-groovy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366F1;
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+.fork-pipeline .fp-groovy svg { width: 10px; height: 10px; }
+.fork-pipeline .fp-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.fork-pipeline .fp-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  padding: 2px 7px 2px 6px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.18);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.fork-pipeline .fp-label .lk { color: var(--color-accent); font-weight: 600; }
+.fork-pipeline .fp-label .lk::after { content: '='; color: var(--color-text-muted); margin-left: 2px; }
+.fork-pipeline .fp-label .lv { color: var(--color-text); font-weight: 500; }
+.fork-pipeline .fp-groovy-src {
+  font-family: 'Fira Code', monospace;
+  color: #6366F1;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.fork-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: rgba(30, 64, 175, 0.04);
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+}
+
+.preview-footer {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border-soft);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.preview-footer svg { width: 12px; height: 12px; }
+
+/* === Toast === */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  padding: 12px 20px;
+  background: var(--color-text);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  opacity: 0;
+  transition: all 300ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.toast svg { width: 14px; height: 14px; }
+
+@media (max-width: 1024px) {
+  .editor-shell { grid-template-columns: 1fr; }
+  .preview-col { position: static; }
+}
+@media (max-width: 768px) {
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .editor-shell { padding: var(--space-md); }
+  .source-fields { grid-template-columns: 1fr; }
+  .action-types { grid-template-columns: 1fr; }
+  .toolbar-actions .btn-ghost { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#">
+      <span class="brand-mark"></span>
+      A-Solid Observe
+    </a>
+    <nav class="crumbs">
+      <a href="#">Subscriptions</a>
+      <span class="sep">/</span>
+      <span class="current">订单事件中心订阅</span>
+    </nav>
+    <div class="nav-spacer"></div>
+    <div class="toolbar-actions">
+      <button class="btn btn-ghost" id="btn-validate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+        校验
+      </button>
+      <button class="btn btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        重置
+      </button>
+      <button class="btn btn-primary" id="btn-save">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        保存
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="editor-shell">
+  <div class="editor-title-block">
+    <div>
+      <h1 class="editor-title">
+        订单事件中心订阅
+        <span class="draft-pill">DRAFT · v2</span>
+      </h1>
+      <p class="editor-subtitle">配置 Source 事件订阅，分叉到一个或多个 Pipeline 进行处理。</p>
+    </div>
+    <div class="editor-meta">
+      <span class="kv">订阅 ID <strong>sub_order_center_v2</strong></span>
+      <span class="kv">命名空间 <strong>ops</strong></span>
+      <span class="kv">更新时间 <strong>3 分钟前</strong></span>
+    </div>
+  </div>
+
+  <!-- ============ LEFT: FORM ============ -->
+  <div class="form-col">
+    <!-- ① Pipeline 绑定 -->
+    <section class="form-section">
+      <div class="section-head">
+        <span class="section-num">1</span>
+        <h3 class="section-title">Pipeline 绑定</h3>
+        <span class="section-hint">支持一绑多 · 事件将分叉到所有绑定的 Pipeline</span>
+      </div>
+      <div class="binding-chips" id="binding-chips">
+        <span class="binding-chip" data-id="high-amount-order-alert">
+          <span class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg></span>
+          high-amount-order-alert
+          <span class="chip-x" data-remove><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+        </span>
+        <span class="binding-chip" data-id="risk-score-monitor">
+          <span class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg></span>
+          risk-score-monitor
+          <span class="chip-x" data-remove><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+        </span>
+        <span class="binding-chip" data-id="inventory-mismatch-warn">
+          <span class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg></span>
+          inventory-mismatch-warn
+          <span class="chip-x" data-remove><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+        </span>
+        <button class="add-binding" id="add-binding">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          添加 Pipeline
+        </button>
+      </div>
+      <div class="binding-meta">
+        <span>已绑 <span class="binding-count" id="binding-count">3</span> 个 Pipeline · 事件将扇出</span>
+        <span>POST /api/v1/namespaces/ops/subscriptions</span>
+      </div>
+    </section>
+
+    <!-- ② Source 配置 -->
+    <section class="form-section">
+      <div class="section-head">
+        <span class="section-num">2</span>
+        <h3 class="section-title">源配置</h3>
+        <span class="section-hint">选择事件来源类型并填写连接信息</span>
+      </div>
+      <div class="source-tabs" id="source-tabs">
+        <button class="source-tab active" data-source="cdc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0" transform="translate(-3 0)"/></svg>
+          CDC
+        </button>
+        <button class="source-tab" data-source="cron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          CRON
+        </button>
+        <button class="source-tab" data-source="api">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          API
+        </button>
+      </div>
+      <div class="source-fields" id="source-fields-cdc">
+        <div class="field-group">
+          <label class="field-label">mq</label>
+          <input class="field-input" value="kafka://orders-cluster" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">topic</label>
+          <input class="field-input" value="cdc.orders.all" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">db</label>
+          <input class="field-input" value="commerce_db" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">table</label>
+          <input class="field-input" value="orders" />
+        </div>
+        <div class="field-group full">
+          <label class="field-label">opTypes</label>
+          <div class="op-types">
+            <button class="op-chip on" data-op="INSERT">INSERT</button>
+            <button class="op-chip on" data-op="UPDATE">UPDATE</button>
+            <button class="op-chip" data-op="DELETE">DELETE</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ 条件编辑器 -->
+    <section class="form-section">
+      <div class="section-head">
+        <span class="section-num">3</span>
+        <h3 class="section-title">条件编辑器</h3>
+        <span class="section-hint">fieldFilter · AND/OR 组合 + Compare/In 叶子</span>
+      </div>
+      <div class="cond-tree">
+        <div class="cond-node">
+          <div class="cond-container" data-op="AND">
+            <div class="cond-leaf compare">
+              <span class="leaf-type">CMP</span>
+              <span class="leaf-field">amount</span>
+              <span class="leaf-op">GT</span>
+              <span class="leaf-value">10000</span>
+              <span class="leaf-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+            </div>
+            <div class="cond-container or" data-op="OR">
+              <div class="cond-leaf in">
+                <span class="leaf-type">IN</span>
+                <span class="leaf-field">region</span>
+                <span class="leaf-op">IN</span>
+                <span class="leaf-value">[CN, US, EU]</span>
+                <span class="leaf-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+              </div>
+              <div class="cond-leaf compare">
+                <span class="leaf-type">CMP</span>
+                <span class="leaf-field">user.tier</span>
+                <span class="leaf-op">EQ</span>
+                <span class="leaf-value">VIP</span>
+                <span class="leaf-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+              </div>
+              <button class="cond-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>叶子</button>
+            </div>
+            <button class="cond-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>叶子 / 容器</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ ActionType -->
+    <section class="form-section">
+      <div class="section-head">
+        <span class="section-num">4</span>
+        <h3 class="section-title">动作类型</h3>
+        <span class="section-hint">命中条件时对绑定的 Pipeline 执行的动作</span>
+      </div>
+      <div class="action-types" id="action-types">
+        <div class="action-card run active" data-action="RUN">
+          <div class="ac-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+          <div class="ac-label">RUN</div>
+          <div class="ac-desc">立即触发</div>
+        </div>
+        <div class="action-card schedule" data-action="SCHEDULE">
+          <div class="ac-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div class="ac-label">SCHEDULE</div>
+          <div class="ac-desc">延时执行</div>
+        </div>
+        <div class="action-card cancel" data-action="CANCEL">
+          <div class="ac-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></div>
+          <div class="ac-label">CANCEL</div>
+          <div class="ac-desc">取消订阅</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ RIGHT: PREVIEW ============ -->
+  <aside class="preview-col">
+    <div class="preview-card">
+      <div class="preview-header">
+        <h3 class="preview-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="18" r="2"/><path d="M8 6h4a4 4 0 0 1 4 4v0M8 18h4a4 4 0 0 0 4-4v0"/></svg>
+          分叉链路预览
+        </h3>
+        <span class="preview-live"><span class="dot"></span>实时</span>
+      </div>
+
+      <div class="fork-diagram">
+        <svg class="fork-svg" viewBox="0 0 480 220" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="flowGrad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stop-color="#1E40AF" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#D97706" stop-opacity="0.7"/>
+            </linearGradient>
+            <linearGradient id="branchGrad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stop-color="#D97706" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.7"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2.5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Source node -->
+          <g transform="translate(40, 95)">
+            <circle r="32" fill="rgba(30, 64, 175, 0.08)" stroke="#1E40AF" stroke-width="1.5"/>
+            <circle r="22" fill="#1E40AF" opacity="0.18"/>
+            <g transform="translate(-10, -10)" stroke="#1E40AF" stroke-width="1.8" fill="none">
+              <path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0" transform="translate(-3 0)"/>
+            </g>
+            <text x="0" y="52" text-anchor="middle" class="node-label">Source</text>
+            <text x="0" y="66" text-anchor="middle" class="node-sub">CDC · kafka</text>
+          </g>
+
+          <!-- Source → Subscription connector -->
+          <path d="M 75 110 C 130 110, 150 110, 195 110" stroke="url(#flowGrad)" stroke-width="2.5" fill="none" class="fork-energized"/>
+
+          <!-- Flow particle -->
+          <circle r="4" class="particle">
+            <animateMotion dur="2.4s" repeatCount="indefinite" path="M 75 110 C 130 110, 150 110, 195 110"/>
+          </circle>
+
+          <!-- Subscription node -->
+          <g transform="translate(240, 95)">
+            <rect x="-45" y="-40" width="90" height="80" rx="14" fill="rgba(217, 119, 6, 0.10)" stroke="#D97706" stroke-width="1.5"/>
+            <rect x="-35" y="-32" width="70" height="64" rx="10" fill="#fff" opacity="0.5"/>
+            <g transform="translate(-12, -12)" stroke="#D97706" stroke-width="1.8" fill="none">
+              <path d="M2 6h20M2 12h20M2 18h13"/>
+            </g>
+            <text x="0" y="14" text-anchor="middle" class="node-label">Subscription</text>
+            <text x="0" y="28" text-anchor="middle" class="node-sub">amount &gt; 10000</text>
+            <text x="0" y="58" text-anchor="middle" class="node-sub" style="fill:#D97706; font-weight:600;">OR · region IN [CN,US,EU]</text>
+          </g>
+
+          <!-- Subscription → fork point -->
+          <path d="M 285 110 L 330 110" stroke="url(#branchGrad)" stroke-width="2.5" fill="none" class="fork-energized"/>
+
+          <!-- Fork node (junction) -->
+          <circle cx="335" cy="110" r="6" fill="#D97706" filter="url(#glow)">
+            <animate attributeName="r" values="5;7;5" dur="1.6s" repeatCount="indefinite"/>
+          </circle>
+          <text x="335" y="92" text-anchor="middle" class="node-sub" style="fill:#D97706; font-weight:700;">FORK</text>
+
+          <!-- Branch lines (will be regenerated by JS) -->
+          <g id="branch-paths">
+            <!-- Filled by JS based on current bindings -->
+          </g>
+
+          <!-- Pipeline nodes placeholder (rendered by JS into HTML below) -->
+        </svg>
+      </div>
+
+      <div class="fork-nodes" id="fork-nodes">
+        <!-- Filled by JS -->
+      </div>
+
+      <div class="preview-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        左侧加 / 减 Pipeline 时，右侧分叉实时同步。
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+  <span id="toast-msg">已保存</span>
+</div>
+
+<script>
+// === State ===
+const initialBindings = [
+  { id: 'high-amount-order-alert', label: '高额订单告警', cond: 'amount > 10000', severity: 'CRITICAL', groovy: 'if (amount > 10000) alerts.emit(...)', groovyLines: 14, labels: { app: 'order-service', team: 'payment' } },
+  { id: 'risk-score-monitor', label: '风控告警', cond: 'riskScore > 0.8', severity: 'WARNING', groovy: 'if (riskScore > 0.8) alerts.emit(...)', groovyLines: 31, labels: { app: 'risk-engine', team: 'risk' } },
+  { id: 'inventory-mismatch-warn', label: '库存告警', cond: 'stockDelta ≠ orderQty', severity: 'WARNING', groovy: 'if (delta != qty) alerts.emit(...)', groovyLines: 33, labels: { app: 'inventory', team: 'payment' } }
+];
+const pipelinePool = [
+  { id: 'order-cancel-handler', label: '订单取消处理', cond: 'status = CANCELLED', severity: 'INFO', groovy: 'onCancel(event) { ... }', groovyLines: 18, labels: { app: 'order-service', team: 'payment' } },
+  { id: 'refund-flow-trigger', label: '退款流程触发', cond: 'refundable = true', severity: 'WARNING', groovy: 'if (refundable) alerts.emit(...)', groovyLines: 22, labels: { app: 'payment-gateway', team: 'payment' } },
+  { id: 'logistics-notify', label: '物流通知', cond: 'shipped = true', severity: 'INFO', groovy: 'notifyLogistics(event)', groovyLines: 9, labels: { app: 'logistics', team: 'ops' } },
+  { id: 'user-tier-upgrade', label: '会员升级', cond: 'tier change', severity: 'INFO', groovy: 'onTierChange(event)', groovyLines: 15, labels: { app: 'user-service', team: 'growth' } }
+];
+let bindings = [...initialBindings];
+
+const forkNodes = document.getElementById('fork-nodes');
+const branchPaths = document.getElementById('branch-paths');
+const bindingCount = document.getElementById('binding-count');
+
+function renderBranchPaths() {
+  // Build SVG branch paths from subscription(285,110) → fork(335,110) → each pipeline end at x=460, y based on count
+  const n = bindings.length;
+  if (n === 0) {
+    branchPaths.innerHTML = '';
+    return;
+  }
+  // Vertical span
+  const gap = Math.min(48, 160 / Math.max(n, 1));
+  const totalH = (n - 1) * gap;
+  const startY = 110 - totalH / 2;
+  let pathsHtml = '';
+  for (let i = 0; i < n; i++) {
+    const y = startY + i * gap;
+    const cx = 335 + 30;
+    pathsHtml += `
+      <path d="M 335 110 C ${cx} 110, ${cx} ${y}, 400 ${y} L 440 ${y}"
+            stroke="url(#branchGrad)" stroke-width="2" fill="none" class="fork-energized" style="animation-delay: ${(i * 0.2).toFixed(2)}s;"/>
+      <circle r="3" class="particle">
+        <animateMotion dur="${(2.4 + i * 0.3).toFixed(1)}s" repeatCount="indefinite"
+          path="M 335 110 C ${cx} 110, ${cx} ${y}, 400 ${y} L 440 ${y}"/>
+      </circle>
+      <circle cx="445" cy="${y}" r="5" fill="#3B82F6" opacity="0.8"/>
+    `;
+  }
+  branchPaths.innerHTML = pathsHtml;
+}
+
+function renderForkNodes() {
+  forkNodes.innerHTML = '';
+  if (bindings.length === 0) {
+    forkNodes.innerHTML = '<div class="fork-empty">未绑定任何 Pipeline · 左侧添加后将在此分叉</div>';
+    bindingCount.textContent = '0';
+    return;
+  }
+  bindings.forEach((b, idx) => {
+    const el = document.createElement('div');
+    el.className = 'fork-pipeline';
+    el.dataset.id = b.id;
+    el.style.animationDelay = `${idx * 0.06}s`;
+    const labelTags = Object.entries(b.labels || {}).map(([k, v]) =>
+      `<span class="fp-label"><span class="lk">${k}</span><span class="lv">${v}</span></span>`
+    ).join('');
+    el.innerHTML = `
+      <span class="fp-dot"></span>
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:8px; justify-content:space-between; flex-wrap:wrap;">
+          <span class="fp-name">${b.id}</span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span class="fp-groovy" title="Groovy · ${b.groovyLines} 行"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>Groovy · ${b.groovyLines}</span>
+            <span class="fp-alert-out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              ${b.severity}
+            </span>
+          </div>
+        </div>
+        <div class="fp-labels">${labelTags}</div>
+        <div class="fp-detail">
+          <div class="fp-row"><span>label</span><strong>${b.label}</strong></div>
+          <div class="fp-row"><span>match</span><strong>${b.cond}</strong></div>
+          <div class="fp-row"><span>scriptSource</span><strong class="fp-groovy-src">${b.groovy}</strong></div>
+          <div class="fp-row"><span>action</span><strong>RUN → Alert</strong></div>
+        </div>
+      </div>
+      <svg class="fp-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+    `;
+    el.addEventListener('click', () => {
+      el.classList.toggle('expanded');
+    });
+    forkNodes.appendChild(el);
+  });
+  bindingCount.textContent = bindings.length;
+}
+
+function syncBindingChips() {
+  // Sync chip data-id list with bindings
+  document.querySelectorAll('.binding-chip').forEach(chip => {
+    const id = chip.dataset.id;
+    if (!bindings.find(b => b.id === id) && !chip.classList.contains('removing')) {
+      chip.classList.add('removing');
+      setTimeout(() => chip.remove(), 240);
+    }
+  });
+}
+
+// === Init ===
+renderBranchPaths();
+renderForkNodes();
+
+// === Binding add/remove ===
+document.getElementById('add-binding').addEventListener('click', () => {
+  const available = pipelinePool.filter(p => !bindings.find(b => b.id === p.id));
+  if (available.length === 0) {
+    showToast('所有 Pipeline 都已绑定');
+    return;
+  }
+  const pick = available[0];
+  bindings.push(pick);
+  // Add chip
+  const chip = document.createElement('span');
+  chip.className = 'binding-chip';
+  chip.dataset.id = pick.id;
+  chip.innerHTML = `
+    <span class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg></span>
+    ${pick.id}
+    <span class="chip-x" data-remove><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M6 18L18 6"/></svg></span>
+  `;
+  document.getElementById('add-binding').before(chip);
+  bindChipRemove(chip);
+  // Re-render preview
+  renderBranchPaths();
+  renderForkNodes();
+  showToast(`已添加 ${pick.id} · 右侧分叉同步`);
+});
+
+function bindChipRemove(chip) {
+  const x = chip.querySelector('[data-remove]');
+  if (!x) return;
+  x.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = chip.dataset.id;
+    chip.classList.add('removing');
+    // Also remove from bindings + re-render preview
+    const nodeEl = document.querySelector(`.fork-pipeline[data-id="${id}"]`);
+    if (nodeEl) nodeEl.classList.add('removing');
+    setTimeout(() => {
+      bindings = bindings.filter(b => b.id !== id);
+      chip.remove();
+      renderBranchPaths();
+      renderForkNodes();
+    }, 240);
+  });
+}
+
+document.querySelectorAll('.binding-chip').forEach(bindChipRemove);
+
+// === Source tabs ===
+document.querySelectorAll('.source-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.source-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// === Op chips ===
+document.querySelectorAll('.op-chip').forEach(c => {
+  c.addEventListener('click', () => c.classList.toggle('on'));
+});
+
+// === Action cards ===
+document.querySelectorAll('.action-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.action-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+  });
+});
+
+// === Toast ===
+const toastEl = document.getElementById('toast');
+const toastMsg = document.getElementById('toast-msg');
+let toastTimer = null;
+function showToast(msg) {
+  toastMsg.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+}
+
+document.getElementById('btn-save').addEventListener('click', () => showToast('已保存 · v2'));
+document.getElementById('btn-validate').addEventListener('click', () => showToast('校验通过 · 3 个 Pipeline 绑定均合法'));
+</script>
+</body>
+</html>

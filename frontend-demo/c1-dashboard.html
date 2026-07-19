@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 大盘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-foreground: #1E3A8A;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-muted: #E9EEF6;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+  --color-ring: #1E40AF;
+  --color-destructive: #DC2626;
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --status-firing: #DC2626;
+  --status-resolved: #16A34A;
+
+  --exec-success: #16A34A;
+  --exec-short: #D97706;
+  --exec-failed: #DC2626;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: '';
+  position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+
+.namespace-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: all 200ms var(--ease);
+}
+.namespace-switch:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border); }
+.namespace-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--exec-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
+
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  border: none;
+  background: transparent;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.28);
+}
+
+.time-range {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+.time-range button {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+}
+.time-range button.active {
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* === Layout === */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* === Hero Pipeline Strip === */
+.hero {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-xl) var(--space-2xl);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+.hero-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+.hero-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 6px 0;
+}
+.hero-headline {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0;
+}
+.hero-headline .num { color: var(--color-primary); font-weight: 700; }
+.hero-headline .alert-count { color: var(--severity-critical); }
+.hero-realtime {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(22, 163, 74, 0.10);
+  border: 1px solid rgba(22, 163, 74, 0.22);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: #15803D;
+}
+.pulse-dot {
+  width: 8px; height: 8px;
+  background: var(--exec-success);
+  border-radius: 50%;
+  animation: pulse 2s var(--ease) infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+}
+
+.pipeline {
+  position: relative;
+  padding: 12px 0 28px;
+}
+.pipeline-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  position: relative;
+  z-index: 2;
+}
+.pipeline-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.node-chip {
+  width: 100%;
+  max-width: 200px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+}
+.node-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-secondary);
+}
+.node-icon {
+  width: 36px; height: 36px;
+  margin: 0 auto 6px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.10), rgba(59, 130, 246, 0.15));
+  color: var(--color-primary);
+}
+.node-icon svg { width: 20px; height: 20px; }
+.node-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.node-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.node-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.node-meta .num { color: var(--color-primary); font-weight: 600; }
+
+/* SVG flow line behind nodes */
+.pipeline-svg {
+  position: absolute;
+  top: 30px;
+  left: 12.5%;
+  right: 12.5%;
+  height: 12px;
+  width: 75%;
+  z-index: 1;
+  pointer-events: none;
+}
+.flow-line {
+  stroke: url(#flow-grad);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-dasharray: 6 10;
+  stroke-linecap: round;
+  animation: flow 1.6s linear infinite;
+}
+@keyframes flow {
+  to { stroke-dashoffset: -32; }
+}
+.flow-particle {
+  fill: var(--color-secondary);
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+}
+
+/* === KPI Cards === */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-lg);
+}
+.kpi {
+  position: relative;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: rise 600ms var(--ease) forwards;
+}
+.kpi:nth-child(1) { animation-delay: 0ms; }
+.kpi:nth-child(2) { animation-delay: 60ms; }
+.kpi:nth-child(3) { animation-delay: 120ms; }
+.kpi:nth-child(4) { animation-delay: 180ms; }
+@keyframes rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+.kpi-accent::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--accent-color, var(--color-primary));
+}
+.kpi-critical, .kpi-firing {
+  --accent-color: var(--severity-critical);
+}
+.kpi-firing::after, .kpi-critical::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--severity-critical);
+  animation: breathe 2.4s var(--ease) infinite;
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); opacity: 0.7; }
+  50% { box-shadow: 4px 0 12px 0 rgba(220, 38, 38, 0.45); opacity: 1; }
+}
+.kpi-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+.kpi-trend.up { color: var(--severity-critical); background: rgba(220, 38, 38, 0.10); }
+.kpi-trend.down { color: var(--exec-success); background: rgba(22, 163, 74, 0.10); }
+.kpi-trend.flat { color: var(--color-text-muted); background: var(--color-muted); }
+.kpi-value {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+.kpi-value .unit { font-size: 16px; font-weight: 500; color: var(--color-text-muted); margin-left: 2px; }
+.kpi-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+.kpi-spark {
+  margin-top: 14px;
+  height: 36px;
+}
+
+/* === Charts Grid === */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-lg);
+}
+.grid-2-equal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+.card {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: rise 600ms var(--ease) forwards;
+  animation-delay: 240ms;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+.card-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.legend {
+  display: inline-flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.legend-dot {
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.legend-dot::before {
+  content: ''; width: 8px; height: 8px; border-radius: 2px;
+  background: var(--lc, var(--color-primary));
+}
+.chart {
+  width: 100%;
+  height: 240px;
+}
+
+/* === Top Tables === */
+.top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.top-list li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: background 200ms var(--ease);
+  cursor: pointer;
+}
+.top-list li:hover { background: var(--color-primary-soft); }
+.top-rank {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.top-name { color: var(--color-text); font-weight: 500; }
+.top-bar {
+  width: 80px;
+  height: 6px;
+  background: var(--color-muted);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.top-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  border-radius: 3px;
+  transform-origin: left;
+  animation: grow 800ms var(--ease) forwards;
+}
+@keyframes grow {
+  from { transform: scaleX(0); }
+}
+.top-val {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* === Severity mini badges in hero pipeline === */
+.sev-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  font-family: 'Fira Code', monospace;
+}
+.sev-tag.critical { background: rgba(220, 38, 38, 0.12); color: var(--severity-critical); }
+.sev-tag.warning { background: rgba(217, 119, 6, 0.12); color: var(--severity-warning); }
+.sev-tag.info { background: rgba(14, 165, 233, 0.12); color: var(--severity-info); }
+
+@media (max-width: 1100px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid-2, .grid-2-equal { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .page { padding: var(--space-lg); }
+  .topbar-inner { padding: 12px var(--space-lg); flex-wrap: wrap; gap: 12px; }
+  .pipeline-track { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+  .pipeline-svg { display: none; }
+  .hero-headline { font-size: 22px; }
+  .kpi-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      A-Solid Observe
+    </div>
+    <div class="nav-spacer"></div>
+
+    <!-- namespace switcher -->
+    <button class="namespace-switch" type="button" aria-label="切换 namespace">
+      <span class="namespace-dot"></span>
+      <span>namespace:&nbsp;<strong>ops</strong></span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+
+    <!-- role tabs -->
+    <nav class="role-tabs" aria-label="角色导航">
+      <button class="role-tab active" type="button">大盘</button>
+      <button class="role-tab" type="button">告警</button>
+      <button class="role-tab" type="button">配置</button>
+    </nav>
+
+    <!-- time range -->
+    <div class="time-range" role="tablist" aria-label="时间范围">
+      <button class="active" type="button">今日</button>
+      <button type="button">7 天</button>
+      <button type="button">30 天</button>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- Hero: pipeline + headline KPIs -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-head">
+      <div>
+        <p class="hero-title" id="hero-title">今日概览 · 数据溯源链路</p>
+        <h1 class="hero-headline">
+          <span class="num" id="heroEvents">0</span> 个事件流经管道
+          <span style="color: var(--color-text-muted); font-weight: 400; margin: 0 8px;">·</span>
+          触发 <span class="num alert-count" id="heroAlerts">0</span> 条告警
+        </h1>
+      </div>
+      <span class="hero-realtime">
+        <span class="pulse-dot"></span>
+        实时 · 已连接
+      </span>
+    </div>
+
+    <!-- Pipeline visualization -->
+    <div class="pipeline">
+      <svg class="pipeline-svg" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="flow-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#1E40AF" />
+            <stop offset="50%" stop-color="#3B82F6" />
+            <stop offset="100%" stop-color="#0EA5E9" />
+          </linearGradient>
+        </defs>
+        <line class="flow-line" x1="0" y1="6" x2="100" y2="6" />
+        <circle class="flow-particle" cx="0" cy="6" r="2.4">
+          <animateMotion dur="3.2s" repeatCount="indefinite" path="M0,0 L100,0" />
+        </circle>
+        <circle class="flow-particle" cx="0" cy="6" r="1.8" opacity="0.6">
+          <animateMotion dur="3.2s" begin="1s" repeatCount="indefinite" path="M0,0 L100,0" />
+        </circle>
+        <circle class="flow-particle" cx="0" cy="6" r="1.4" opacity="0.4">
+          <animateMotion dur="3.2s" begin="2s" repeatCount="indefinite" path="M0,0 L100,0" />
+        </circle>
+      </svg>
+
+      <div class="pipeline-track">
+        <div class="pipeline-node">
+          <div class="node-chip">
+            <div class="node-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+            </div>
+            <div class="node-label">Source</div>
+            <div class="node-name">CDC · orders</div>
+            <div class="node-meta">事件 <span class="num">1,284</span></div>
+          </div>
+        </div>
+        <div class="pipeline-node">
+          <div class="node-chip">
+            <div class="node-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+            </div>
+            <div class="node-label">Subscription</div>
+            <div class="node-name">高额订单监控</div>
+            <div class="node-meta">命中 <span class="num">312</span></div>
+          </div>
+        </div>
+        <div class="pipeline-node">
+          <div class="node-chip">
+            <div class="node-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.24 7.76 2.83-2.83"/><path d="M18 12h4"/><path d="m16.24 16.24 2.83 2.83"/><path d="M12 18v4"/><path d="m4.93 19.07 2.83-2.83"/><path d="M2 12h4"/><path d="m4.93 4.93 2.83 2.83"/></svg>
+            </div>
+            <div class="node-label">Pipeline</div>
+            <div class="node-name">check: 高额订单</div>
+            <div class="node-meta">执行 <span class="num">312</span></div>
+          </div>
+        </div>
+        <div class="pipeline-node">
+          <div class="node-chip">
+            <div class="node-icon" style="background: linear-gradient(135deg, rgba(220,38,38,0.12), rgba(217,119,6,0.15)); color: var(--severity-critical);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            </div>
+            <div class="node-label">Alert</div>
+            <div class="node-name">触发告警</div>
+            <div class="node-meta">
+              <span class="sev-tag critical">CRI 12</span>
+              <span class="sev-tag warning">WAR 47</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KPI cards -->
+  <section class="kpi-grid" aria-label="今日核心指标">
+    <article class="kpi">
+      <div class="kpi-head">
+        <span class="kpi-label">今日告警总数</span>
+        <span class="kpi-trend up">▲ 8%</span>
+      </div>
+      <div class="kpi-value"><span class="num" data-target="64">0</span></div>
+      <div class="kpi-sub">较昨日 +5</div>
+      <div class="kpi-spark" id="spark-total"></div>
+    </article>
+
+    <article class="kpi kpi-firing">
+      <div class="kpi-head">
+        <span class="kpi-label">FIRING</span>
+        <span class="kpi-trend up">▲ 2</span>
+      </div>
+      <div class="kpi-value"><span class="num" data-target="8">0</span></div>
+      <div class="kpi-sub">需处理 · 4 条 ack 中</div>
+      <div class="kpi-spark" id="spark-firing"></div>
+    </article>
+
+    <article class="kpi kpi-critical">
+      <div class="kpi-head">
+        <span class="kpi-label">CRITICAL</span>
+        <span class="kpi-trend flat">— 持平</span>
+      </div>
+      <div class="kpi-value"><span class="num" data-target="12">0</span></div>
+      <div class="kpi-sub">最严重 · 全部已 ack</div>
+      <div class="kpi-spark" id="spark-critical"></div>
+    </article>
+
+    <article class="kpi">
+      <div class="kpi-head">
+        <span class="kpi-label">执行成功率</span>
+        <span class="kpi-trend down">▼ 0.3%</span>
+      </div>
+      <div class="kpi-value"><span class="num" data-target="98.4">0</span><span class="unit">%</span></div>
+      <div class="kpi-sub">1,204 成功 / 21 失败</div>
+      <div class="kpi-spark" id="spark-success"></div>
+    </article>
+  </section>
+
+  <!-- Trend charts -->
+  <section class="grid-2">
+    <article class="card">
+      <header class="card-head">
+        <div>
+          <h3 class="card-title">告警趋势（按小时）</h3>
+          <p class="card-sub">今日 00:00 至现在 · 按 severity 堆叠</p>
+        </div>
+        <div class="legend">
+          <span class="legend-dot" style="--lc: #DC2626">CRITICAL</span>
+          <span class="legend-dot" style="--lc: #D97706">WARNING</span>
+          <span class="legend-dot" style="--lc: #0EA5E9">INFO</span>
+        </div>
+      </header>
+      <div class="chart" id="chart-trend" role="img" aria-label="告警趋势堆叠面积图"></div>
+    </article>
+
+    <article class="card">
+      <header class="card-head">
+        <div>
+          <h3 class="card-title">执行吞吐（按小时）</h3>
+          <p class="card-sub">success / failed 双系列</p>
+        </div>
+        <div class="legend">
+          <span class="legend-dot" style="--lc: #16A34A">SUCCESS</span>
+          <span class="legend-dot" style="--lc: #DC2626">FAILED</span>
+        </div>
+      </header>
+      <div class="chart" id="chart-throughput" role="img" aria-label="执行吞吐柱状图"></div>
+    </article>
+  </section>
+
+  <!-- Distribution -->
+  <section class="grid-2-equal">
+    <article class="card">
+      <header class="card-head">
+        <div>
+          <h3 class="card-title">告警按 severity 分布</h3>
+          <p class="card-sub">今日共 64 条</p>
+        </div>
+      </header>
+      <div class="chart" id="chart-severity" role="img" aria-label="告警按严重度分布饼图"></div>
+    </article>
+
+    <article class="card">
+      <header class="card-head">
+        <div>
+          <h3 class="card-title">告警按 team 分布</h3>
+          <p class="card-sub">Top 5 团队</p>
+        </div>
+      </header>
+      <div class="chart" id="chart-team" role="img" aria-label="告警按团队分布横向柱状图"></div>
+    </article>
+  </section>
+
+  <!-- Top N tables -->
+  <section class="grid-2-equal">
+    <article class="card">
+      <header class="card-head">
+        <h3 class="card-title">最活跃 Pipeline · Top 5</h3>
+      </header>
+      <ul class="top-list" id="top-pipelines"></ul>
+    </article>
+
+    <article class="card">
+      <header class="card-head">
+        <h3 class="card-title">最频繁告警 fingerprint · Top 5</h3>
+      </header>
+      <ul class="top-list" id="top-fingerprints"></ul>
+    </article>
+  </section>
+
+</main>
+
+<script>
+// ============================================================
+// Mock data — 字段照抄真实接口约定
+// 接口：GET /api/v1/stats/alerts?namespace=ops&from=...&to=...
+//      GET /api/v1/stats/alerts/timeseries?namespace=ops&from=...&to=...&bucket=1h
+//      GET /api/v1/stats/executions?namespace=ops&from=...&to=...
+// ============================================================
+
+const stats = {
+  // GET /api/v1/stats/alerts
+  bySeverity: { CRITICAL: 12, WARNING: 47, INFO: 5 },
+  byStatus:   { FIRING: 8, RESOLVED: 56 },
+  total: 64,
+  // GET /api/v1/stats/executions
+  executions: { success: 1204, failed: 21, short_circuited: 87, successRate: 98.4 },
+  // hero
+  eventsToday: 1284,
+  alertsToday: 47
+};
+
+// trend timeseries mock (today, hourly, 0~14h)
+const hours = Array.from({length: 15}, (_, i) => `${String(i).padStart(2,'0')}:00`);
+const trend = {
+  CRITICAL: [0, 0, 1, 0, 0, 0, 1, 2, 1, 0, 1, 3, 2, 1, 0],
+  WARNING:  [1, 0, 2, 1, 0, 1, 3, 5, 4, 3, 6, 8, 5, 4, 4],
+  INFO:     [0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0]
+};
+
+const throughput = {
+  success: [12, 18, 22, 30, 28, 35, 60, 88, 110, 125, 132, 140, 138, 128, 118],
+  failed:  [0, 1, 0, 0, 2, 0, 1, 2, 1, 3, 2, 4, 2, 1, 2]
+};
+
+const teamDist = [
+  { name: 'payment', value: 24 },
+  { name: 'risk',    value: 18 },
+  { name: 'order',   value: 12 },
+  { name: 'infra',   value: 7 },
+  { name: 'others',  value: 3 }
+];
+
+const topPipelines = [
+  { name: '高额订单告警',    count: 28 },
+  { name: '支付失败监控',    count: 18 },
+  { name: '风控规则引擎',    count: 12 },
+  { name: '库存同步检测',    count: 8  },
+  { name: '登录异常告警',    count: 5  }
+];
+
+const topFingerprints = [
+  { name: 'amount_gt_10k',     count: 14 },
+  { name: 'payment_timeout',   count: 9  },
+  { name: 'risk_score_high',   count: 7  },
+  { name: 'inventory_drift',   count: 5  },
+  { name: 'login_burst',       count: 3  }
+];
+
+// ============================================================
+// Count-up animation
+// ============================================================
+function animateCount(el, target, duration = 900) {
+  const isFloat = String(target).includes('.');
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const v = target * eased;
+    el.textContent = isFloat ? v.toFixed(1) : Math.round(v).toLocaleString();
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// Hero counts
+animateCount(document.getElementById('heroEvents'), stats.eventsToday);
+animateCount(document.getElementById('heroAlerts'), stats.alertsToday);
+
+// KPI counts
+document.querySelectorAll('.kpi-value .num[data-target]').forEach(el => {
+  const t = parseFloat(el.dataset.target);
+  animateCount(el, t);
+});
+
+// ============================================================
+// Sparklines (mini)
+// ============================================================
+function spark(id, data, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  chart.setOption({
+    grid: { left: 0, right: 0, top: 4, bottom: 0 },
+    xAxis: { type: 'category', show: false, data: data.map((_,i)=>i) },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      type: 'line',
+      data,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color, width: 2 },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: color + '40' },
+            { offset: 1, color: color + '00' }
+          ]
+        }
+      }
+    }]
+  });
+  return chart;
+}
+
+spark('spark-total',    trend.CRITICAL.map((_,i)=>trend.CRITICAL[i]+trend.WARNING[i]+trend.INFO[i]), '#1E40AF');
+spark('spark-firing',   [3,4,5,6,5,7,6,8,7,8,9,8,9,8,8], '#DC2626');
+spark('spark-critical', trend.CRITICAL, '#DC2626');
+spark('spark-success',  [97.8,98.1,98.3,98.5,98.6,98.7,98.5,98.6,98.4,98.3,98.4,98.5,98.4,98.4,98.4], '#16A34A');
+
+// ============================================================
+// Trend chart (stacked area)
+// ============================================================
+const trendChart = echarts.init(document.getElementById('chart-trend'), null, { renderer: 'svg' });
+function buildTrendOption(extra = {}) {
+  return {
+    grid: { left: 36, right: 16, top: 12, bottom: 28 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      borderColor: '#DBEAFE',
+      borderWidth: 1,
+      textStyle: { color: '#0F172A', fontFamily: 'Fira Sans' },
+      extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 8px 20px rgba(15,23,42,0.10); border-radius: 10px;'
+    },
+    xAxis: {
+      type: 'category',
+      data: hours,
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: '#DBEAFE' } },
+      axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10, interval: 2 }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: 'rgba(30,64,175,0.06)' } },
+      axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10 }
+    },
+    series: [
+      { name: 'CRITICAL', type: 'line', stack: 'a', smooth: true, symbol: 'none',
+        data: extra.CRITICAL || trend.CRITICAL,
+        lineStyle: { color: '#DC2626', width: 2 },
+        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+          { offset: 0, color: 'rgba(220,38,38,0.34)' },
+          { offset: 1, color: 'rgba(220,38,38,0.04)' } ] } } },
+      { name: 'WARNING', type: 'line', stack: 'a', smooth: true, symbol: 'none',
+        data: extra.WARNING || trend.WARNING,
+        lineStyle: { color: '#D97706', width: 2 },
+        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+          { offset: 0, color: 'rgba(217,119,6,0.34)' },
+          { offset: 1, color: 'rgba(217,119,6,0.04)' } ] } } },
+      { name: 'INFO', type: 'line', stack: 'a', smooth: true, symbol: 'none',
+        data: extra.INFO || trend.INFO,
+        lineStyle: { color: '#0EA5E9', width: 2 },
+        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+          { offset: 0, color: 'rgba(14,165,233,0.34)' },
+          { offset: 1, color: 'rgba(14,165,233,0.04)' } ] } } }
+    ]
+  };
+}
+trendChart.setOption(buildTrendOption());
+
+// ============================================================
+// Throughput chart (bar)
+// ============================================================
+const throughputChart = echarts.init(document.getElementById('chart-throughput'), null, { renderer: 'svg' });
+throughputChart.setOption({
+  grid: { left: 36, right: 16, top: 12, bottom: 28 },
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: '#DBEAFE',
+    borderWidth: 1,
+    textStyle: { color: '#0F172A', fontFamily: 'Fira Sans' },
+    extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 8px 20px rgba(15,23,42,0.10); border-radius: 10px;'
+  },
+  xAxis: {
+    type: 'category',
+    data: hours,
+    axisLine: { lineStyle: { color: '#DBEAFE' } },
+    axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10, interval: 2 }
+  },
+  yAxis: {
+    type: 'value',
+    splitLine: { lineStyle: { color: 'rgba(30,64,175,0.06)' } },
+    axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10 }
+  },
+  series: [
+    { name: 'SUCCESS', type: 'bar', stack: 't', barWidth: 10, roundCap: true,
+      data: throughput.success,
+      itemStyle: { color: '#16A34A', borderRadius: [3,3,0,0] } },
+    { name: 'FAILED', type: 'bar', stack: 't', barWidth: 10,
+      data: throughput.failed,
+      itemStyle: { color: '#DC2626', borderRadius: [3,3,0,0] } }
+  ],
+  animationDuration: 900,
+  animationEasing: 'cubicOut'
+});
+
+// ============================================================
+// Severity pie
+// ============================================================
+const severityChart = echarts.init(document.getElementById('chart-severity'), null, { renderer: 'svg' });
+severityChart.setOption({
+  tooltip: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: '#DBEAFE', borderWidth: 1,
+    textStyle: { color: '#0F172A', fontFamily: 'Fira Sans' },
+    extraCssText: 'backdrop-filter: blur(8px); border-radius: 10px;'
+  },
+  legend: {
+    orient: 'horizontal', bottom: 0,
+    textStyle: { color: '#64748B', fontFamily: 'Fira Sans', fontSize: 12 },
+    itemWidth: 10, itemHeight: 10
+  },
+  series: [{
+    type: 'pie',
+    radius: ['52%', '74%'],
+    center: ['50%', '46%'],
+    avoidLabelOverlap: true,
+    itemStyle: { borderColor: '#fff', borderWidth: 3 },
+    label: {
+      show: true, position: 'center',
+      formatter: '{c|64}\n{a|今日告警}',
+      rich: {
+        c: { fontSize: 28, fontWeight: 700, color: '#0F172A', fontFamily: 'Fira Code', lineHeight: 32 },
+        a: { fontSize: 11, color: '#64748B', fontFamily: 'Fira Sans' }
+      }
+    },
+    emphasis: { label: { show: true } },
+    data: [
+      { value: 12, name: 'CRITICAL', itemStyle: { color: '#DC2626' } },
+      { value: 47, name: 'WARNING',  itemStyle: { color: '#D97706' } },
+      { value: 5,  name: 'INFO',     itemStyle: { color: '#0EA5E9' } }
+    ]
+  }]
+});
+
+// ============================================================
+// Team horizontal bar
+// ============================================================
+const teamChart = echarts.init(document.getElementById('chart-team'), null, { renderer: 'svg' });
+teamChart.setOption({
+  grid: { left: 60, right: 24, top: 8, bottom: 8 },
+  tooltip: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: '#DBEAFE', borderWidth: 1,
+    textStyle: { color: '#0F172A', fontFamily: 'Fira Sans' },
+    extraCssText: 'backdrop-filter: blur(8px); border-radius: 10px;'
+  },
+  xAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(30,64,175,0.06)' } }, axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10 } },
+  yAxis: {
+    type: 'category',
+    data: teamDist.map(t => t.name).reverse(),
+    axisLine: { lineStyle: { color: '#DBEAFE' } },
+    axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 11 }
+  },
+  series: [{
+    type: 'bar',
+    barWidth: 14,
+    data: teamDist.map(t => t.value).reverse(),
+    itemStyle: {
+      borderRadius: [0, 4, 4, 0],
+      color: {
+        type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+        colorStops: [
+          { offset: 0, color: '#1E40AF' },
+          { offset: 1, color: '#3B82F6' }
+        ]
+      }
+    },
+    label: { show: true, position: 'right', color: '#1E40AF', fontFamily: 'Fira Code', fontSize: 11, fontWeight: 600 }
+  }],
+  animationDuration: 900,
+  animationEasing: 'cubicOut'
+});
+
+// ============================================================
+// Top lists
+// ============================================================
+function renderTop(id, items) {
+  const max = Math.max(...items.map(i => i.count));
+  const ul = document.getElementById(id);
+  ul.innerHTML = items.map((it, i) => `
+    <li>
+      <span class="top-rank">${String(i+1).padStart(2,'0')}</span>
+      <span class="top-name">${it.name}</span>
+      <span class="top-bar"><span class="top-bar-fill" style="width: ${(it.count/max*100).toFixed(1)}%"></span></span>
+      <span class="top-val">${it.count}</span>
+    </li>
+  `).join('');
+}
+renderTop('top-pipelines', topPipelines);
+renderTop('top-fingerprints', topFingerprints);
+
+// ============================================================
+// "Real-time" simulated — push a new trend point every 5s
+// (respects reduced-motion: just appends without animation)
+// ============================================================
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!reduceMotion) {
+  setInterval(() => {
+    // shift left, append a new random point
+    const newCritical = Math.random() < 0.3 ? Math.floor(Math.random() * 3) : 0;
+    const newWarning  = Math.floor(Math.random() * 6);
+    const newInfo     = Math.random() < 0.4 ? 1 : 0;
+    trend.CRITICAL.shift(); trend.CRITICAL.push(newCritical);
+    trend.WARNING.shift();  trend.WARNING.push(newWarning);
+    trend.INFO.shift();     trend.INFO.push(newInfo);
+    trendChart.setOption(buildTrendOption(trend));
+  }, 5000);
+}
+
+// responsive resize
+window.addEventListener('resize', () => {
+  [trendChart, throughputChart, severityChart, teamChart].forEach(c => c && c.resize());
+});
+</script>
+</body>
+</html>

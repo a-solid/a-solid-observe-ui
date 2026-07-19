@@ -1,0 +1,1425 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · Pipeline 编辑器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --exec-success: #16A34A;
+  --exec-short: #D97706;
+  --exec-failed: #DC2626;
+
+  --pipe-published: #16A34A;
+  --pipe-draft: #D97706;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 14px var(--space-xl);
+  display: flex; align-items: center; gap: var(--space-lg);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px; gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer; border: none; background: transparent;
+  transition: all 200ms var(--ease);
+  text-decoration: none;
+}
+.role-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* === Editor toolbar === */
+.editor-toolbar {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-border-soft);
+  padding: 12px var(--space-xl);
+}
+.editor-toolbar-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+.editor-name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.editor-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(217, 119, 6, 0.10);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  color: var(--pipe-draft);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+.editor-version .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--pipe-draft);
+  animation: draftDot 2s var(--ease) infinite;
+}
+@keyframes draftDot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(217, 119, 6, 0); }
+}
+.editor-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+}
+.toolbar-spacer { flex: 1; }
+
+.btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn svg { width: 13px; height: 13px; }
+.btn-secondary {
+  background: rgba(255,255,255,0.8);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+.btn-secondary:hover {
+  background: #fff;
+  border-color: var(--color-primary);
+}
+.btn-warn {
+  background: rgba(217, 119, 6, 0.10);
+  color: var(--color-accent);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+.btn-warn:hover { background: rgba(217, 119, 6, 0.18); }
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 8px 18px;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.28);
+}
+.btn-primary:hover {
+  background: #1E3A8A;
+  transform: translateY(-1px);
+}
+
+/* === Two-pane layout === */
+.workspace {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--space-xl);
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.pane {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.pane-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: rgba(248, 250, 252, 0.4);
+}
+.pane-tab {
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  transition: all 200ms var(--ease);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pane-tab svg { width: 13px; height: 13px; }
+.pane-tab:hover { color: var(--color-text); }
+.pane-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: rgba(255,255,255,0.5);
+}
+
+.pane-body {
+  padding: var(--space-xl);
+}
+
+/* === Visual editor === */
+.vis-canvas {
+  background: linear-gradient(180deg, rgba(248,250,252,0.4), rgba(241,245,249,0.4));
+  border-radius: 12px;
+  padding: var(--space-xl) var(--space-md);
+  border: 1px dashed var(--color-border);
+  position: relative;
+}
+
+.node-editor {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  min-height: 220px;
+  gap: var(--space-2xl);
+}
+
+.source-bubble, .target-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bubble-icon {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-secondary);
+  box-shadow: var(--shadow-sm);
+}
+.bubble-icon.alert {
+  color: var(--severity-critical);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+.bubble-icon svg { width: 24px; height: 24px; }
+
+.connector {
+  flex: 1;
+  position: relative;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--color-border) 0 6px, transparent 6px 12px);
+  max-width: 60px;
+}
+.connector::before, .connector::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px; height: 6px;
+  background: var(--color-border);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+.connector::before { left: 0; }
+.connector::after { right: 0; }
+
+/* central node card — Groovy script */
+.check-node {
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid var(--color-secondary);
+  border-radius: 14px;
+  padding: 0;
+  min-width: 460px;
+  max-width: 520px;
+  box-shadow: var(--shadow-md), 0 0 0 4px rgba(59,130,246,0.10);
+  position: relative;
+  overflow: hidden;
+}
+.check-node::before {
+  content: 'NODE · script (Groovy)';
+  position: absolute;
+  top: -10px;
+  left: var(--space-lg);
+  padding: 2px 8px;
+  background: var(--color-secondary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  z-index: 2;
+}
+.node-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.node-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #E2E8F0;
+  font-family: 'Fira Code', monospace;
+}
+.node-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.node-type-tag {
+  padding: 2px 6px;
+  background: rgba(59, 130, 246, 0.18);
+  color: #93C5FD;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+.groovy-editor {
+  margin: 0;
+  padding: 14px 16px 12px;
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #CBD5E1;
+  white-space: pre;
+  overflow-x: auto;
+  min-height: 240px;
+  counter-reset: line;
+}
+.groovy-editor .ln {
+  display: inline-block;
+  width: 26px;
+  color: #475569;
+  font-size: 11px;
+  text-align: right;
+  padding-right: 10px;
+  user-select: none;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  margin-right: 10px;
+}
+.groovy-editor .kw { color: #C084FC; font-weight: 600; }
+.groovy-editor .fn { color: #60A5FA; }
+.groovy-editor .str { color: #86EFAC; }
+.groovy-editor .num { color: #FBBF24; }
+.groovy-editor .var { color: #FBA74D; }
+.groovy-editor .cmt { color: #64748B; font-style: italic; }
+.groovy-editor .punc { color: #94A3B8; }
+
+.ctx-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.02);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.ctx-chip {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #93C5FD;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  cursor: help;
+}
+.ctx-chip .ck { color: #FBA74D; }
+.ctx-chip:hover { background: rgba(59, 130, 246, 0.20); }
+
+/* === Labels editor (Pipeline metadata) === */
+.labels-block {
+  margin-top: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.5);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+}
+.labels-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.labels-head svg { width: 14px; height: 14px; color: var(--color-accent); }
+.labels-head .lh-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.labels-head .lh-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+.labels-head .lh-count {
+  padding: 2px 8px;
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--color-accent);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+.labels-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.label-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.label-input {
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--color-text);
+  outline: none;
+  transition: all 200ms var(--ease);
+}
+.label-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(217,119,6,0.12);
+}
+.label-input.k { font-weight: 600; color: var(--color-accent); }
+.label-remove {
+  width: 26px; height: 26px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms var(--ease);
+}
+.label-remove:hover {
+  background: rgba(220, 38, 38, 0.10);
+  color: var(--severity-critical);
+}
+.label-remove svg { width: 12px; height: 12px; }
+.label-add {
+  align-self: flex-start;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  transition: all 200ms var(--ease);
+}
+.label-add:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(217, 119, 6, 0.04);
+}
+.label-add svg { width: 10px; height: 10px; }
+
+.field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* === JSON editor === */
+.json-editor {
+  background: #0F172A;
+  border-radius: 10px;
+  padding: var(--space-md);
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #CBD5E1;
+  overflow-x: auto;
+  position: relative;
+  min-height: 320px;
+}
+.json-editor .k { color: #93C5FD; }
+.json-editor .s { color: #86EFAC; }
+.json-editor .n { color: #FBBF24; }
+.json-editor .b { color: #F87171; }
+.json-editor .c { color: #64748B; font-style: italic; }
+
+/* === Right pane: validation + dry-run === */
+.right-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  position: sticky;
+  top: 100px;
+}
+
+.section-block {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+}
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-md) 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title svg { width: 14px; height: 14px; }
+
+/* Validation result */
+.validation-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: var(--space-md);
+  background: rgba(22,163,74,0.06);
+  border: 1px solid rgba(22,163,74,0.2);
+  border-radius: 10px;
+}
+.validation-result.fail {
+  background: rgba(220,38,38,0.06);
+  border-color: rgba(220,38,38,0.2);
+}
+.validation-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(22,163,74,0.15);
+  color: var(--exec-success);
+  flex-shrink: 0;
+}
+.validation-result.fail .validation-icon {
+  background: rgba(220,38,38,0.15);
+  color: var(--severity-critical);
+}
+.validation-icon svg { width: 16px; height: 16px; }
+.validation-text {
+  flex: 1;
+  font-size: 13px;
+}
+.validation-title {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+.validation-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+}
+
+.validation-checks {
+  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.check-icon {
+  width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--exec-success);
+  flex-shrink: 0;
+}
+.check-icon svg { width: 14px; height: 14px; }
+.check-row.muted .check-icon { color: var(--color-text-muted); }
+.check-row.fail .check-icon { color: var(--severity-critical); }
+.check-text { color: var(--color-text); }
+.check-row.muted .check-text { color: var(--color-text-muted); }
+
+/* Dry-run */
+.dryrun-event {
+  background: rgba(255,255,255,0.5);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.dryrun-event-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.dryrun-event-actions {
+  display: inline-flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 2px;
+  gap: 2px;
+}
+.event-opt {
+  padding: 3px 9px;
+  font-size: 11px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+}
+.event-opt.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.event-json {
+  background: #0F172A;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #CBD5E1;
+}
+.event-json .k { color: #93C5FD; }
+.event-json .s { color: #86EFAC; }
+.event-json .n { color: #FBBF24; }
+
+.run-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.28);
+  margin-bottom: var(--space-md);
+}
+.run-btn:hover {
+  background: #B45309;
+  transform: translateY(-1px);
+}
+.run-btn svg { width: 14px; height: 14px; }
+
+/* Causal flow */
+.causal-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--color-border);
+}
+.causal-step {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 360ms var(--ease);
+}
+.causal-step.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+.causal-stage {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding-top: 4px;
+}
+.causal-card {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.55;
+  position: relative;
+}
+.causal-card.success {
+  background: rgba(22,163,74,0.06);
+  border-color: rgba(22,163,74,0.25);
+}
+.causal-card.alert {
+  background: rgba(220,38,38,0.06);
+  border-color: rgba(220,38,38,0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.causal-card .k { color: var(--color-secondary); }
+.causal-card .n { color: var(--color-accent); font-weight: 600; }
+.causal-card .b { color: var(--severity-critical); font-weight: 600; }
+.causal-card.alert .alert-icon {
+  color: var(--severity-critical);
+  flex-shrink: 0;
+}
+.causal-card.alert .alert-icon svg { width: 16px; height: 16px; }
+.causal-card .alert-meta {
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 11px;
+  color: var(--severity-critical);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* === Toast === */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 300ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast svg { width: 16px; height: 16px; color: var(--exec-success); }
+
+@media (max-width: 1100px) {
+  .workspace { grid-template-columns: 1fr; }
+  .right-pane { position: static; }
+}
+@media (max-width: 768px) {
+  .workspace { padding: var(--space-md); }
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .editor-toolbar { padding: var(--space-sm) var(--space-md); }
+  .editor-toolbar-inner { gap: var(--space-sm); }
+  .editor-name { font-size: 16px; }
+  .btn { padding: 6px 10px; font-size: 12px; }
+  .btn-primary { padding: 6px 14px; }
+  .pane-body { padding: var(--space-md); }
+  .node-editor { flex-direction: column; gap: var(--space-md); }
+  .connector { width: 2px; height: 30px; max-width: none; background: repeating-linear-gradient(180deg, var(--color-border) 0 6px, transparent 6px 12px); }
+  .check-node { min-width: 0; width: 100%; }
+  .node-fields { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="c1-dashboard.html" class="brand">
+      <span class="brand-mark"></span>
+      <span>A-Solid Observe</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <nav class="role-tabs">
+      <a href="c1-dashboard.html" class="role-tab">大盘</a>
+      <a href="b1-alerts.html" class="role-tab">告警</a>
+      <a href="a1-pipelines.html" class="role-tab active">配置</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Editor toolbar -->
+<div class="editor-toolbar">
+  <div class="editor-toolbar-inner">
+    <span class="editor-name">高额订单告警</span>
+    <span class="editor-version"><span class="dot"></span>draft v4</span>
+    <span class="editor-meta">namespace/ops · 未保存改动</span>
+    <div class="toolbar-spacer"></div>
+    <button class="btn btn-secondary" id="btnValidate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      校验
+    </button>
+    <button class="btn btn-warn" id="btnDryRun">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      干跑
+    </button>
+    <button class="btn btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      保存版本
+    </button>
+    <button class="btn btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      发布
+    </button>
+  </div>
+</div>
+
+<main class="workspace">
+  <!-- Left: editor -->
+  <div class="pane">
+    <div class="pane-tabs">
+      <button class="pane-tab active" data-tab="visual">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
+        可视化
+      </button>
+      <button class="pane-tab" data-tab="json">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+        JSON
+      </button>
+    </div>
+    <div class="pane-body">
+      <!-- Visual tab -->
+      <div id="visualTab">
+        <div class="vis-canvas">
+          <div class="node-editor">
+            <div class="source-bubble">
+              <div class="bubble-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0" transform="translate(-3 0)"/></svg>
+              </div>
+              <span>event</span>
+            </div>
+
+            <div class="connector"></div>
+
+            <div class="check-node">
+              <div class="node-head">
+                <div class="node-title-row">
+                  <div class="node-title">check</div>
+                  <span class="node-type-tag">GROOVY</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94A3B8;font-family:'Fira Code', monospace;">
+                  <span style="display:inline-flex;align-items:center;gap:4px;color:#86EFAC;">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+                    编译通过
+                  </span>
+                  <span>·</span>
+                  <span>12 行 · 387 字符</span>
+                </div>
+              </div>
+              <div id="groovyHost" style="min-height: 280px;"></div>
+              <div class="ctx-bar">
+                <span class="ctx-chip" title="当前事件，支持 getAt(path) 路径解析"><span class="ck">event</span> · Event</span>
+                <span class="ctx-chip" title="AlertsApi: emit(fingerprint, severity, labels, annotations)"><span class="ck">alerts</span> · AlertsApi</span>
+                <span class="ctx-chip" title="DbApi: query(sql, args) 只读 SQL 访问"><span class="ck">db</span> · DbApi</span>
+                <span class="ctx-chip" title="ctx 共享上下文，跨节点传值"><span class="ck">ctx</span> · ScriptContext</span>
+                <span class="ctx-chip" title="now() 当前时间 Supplier"><span class="ck">now</span> · Supplier&lt;Instant&gt;</span>
+              </div>
+            </div>
+
+            <div class="connector"></div>
+
+            <div class="source-bubble">
+              <div class="bubble-icon alert">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>
+              </div>
+              <span>alerts.emit()</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline 元数据 Labels -->
+        <div class="labels-block">
+          <div class="labels-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg>
+            <span class="lh-title">Pipeline 元数据 Labels</span>
+            <span class="lh-hint">用于列表过滤、告警 silencing 匹配 · Map&lt;String,String&gt;</span>
+            <span class="lh-count" id="labelsCount">4</span>
+          </div>
+          <div class="labels-rows" id="labelsRows">
+            <div class="label-row">
+              <input class="label-input k" value="app" />
+              <input class="label-input" value="order-service" />
+              <button class="label-remove" data-remove-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+            </div>
+            <div class="label-row">
+              <input class="label-input k" value="line" />
+              <input class="label-input" value="commerce" />
+              <button class="label-remove" data-remove-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+            </div>
+            <div class="label-row">
+              <input class="label-input k" value="team" />
+              <input class="label-input" value="payment" />
+              <button class="label-remove" data-remove-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+            </div>
+            <div class="label-row">
+              <input class="label-input k" value="domain" />
+              <input class="label-input" value="risk-control" />
+              <button class="label-remove" data-remove-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+            </div>
+          </div>
+          <button class="label-add" id="addLabel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            添加 Label
+          </button>
+        </div>
+      </div>
+
+      <!-- JSON tab -->
+      <div id="jsonTab" style="display: none;">
+        <div class="json-editor"><span class="c">// PipelineDefinition · draft v4 · GroovyScriptEngine 沙箱（白名单 import / 5s 超时）</span>
+{
+  <span class="k">"id"</span>: <span class="n">1001</span>,
+  <span class="k">"namespace"</span>: <span class="s">"ops"</span>,
+  <span class="k">"name"</span>: <span class="s">"high-amount-order-alert"</span>,
+  <span class="k">"description"</span>: <span class="s">"高额订单告警 · amount &gt; 10000"</span>,
+  <span class="k">"status"</span>: <span class="s">"DRAFT"</span>,
+  <span class="k">"currentVersion"</span>: <span class="n">4</span>,
+  <span class="k">"labels"</span>: {
+    <span class="k">"app"</span>: <span class="s">"order-service"</span>,
+    <span class="k">"line"</span>: <span class="s">"commerce"</span>,
+    <span class="k">"team"</span>: <span class="s">"payment"</span>,
+    <span class="k">"domain"</span>: <span class="s">"risk-control"</span>
+  },
+  <span class="k">"version"</span>: {
+    <span class="k">"nodes"</span>: [
+      {
+        <span class="k">"name"</span>: <span class="s">"check"</span>,
+        <span class="k">"scriptSource"</span>: <span class="s">"def amount = event.getAt(\"after.amount\") ?: event.getAt(\"amount\")\nif (amount as BigDecimal &gt; 10000) {\n  alerts.emit(\"high-amount-order\", \"CRITICAL\", ...)\n  return true\n}\nreturn false"</span>
+      }
+    ]
+  }
+}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: validation + dry-run -->
+  <div class="right-pane">
+    <!-- Validation -->
+    <div class="section-block">
+      <p class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        校验结果
+      </p>
+      <div class="validation-result" id="validationResult">
+        <div class="validation-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div class="validation-text">
+          <div class="validation-title">校验通过 · 可以发布</div>
+          <div class="validation-sub">definitionHash: 0x9a4f...e21b</div>
+        </div>
+      </div>
+      <div class="validation-checks">
+        <div class="check-row">
+          <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></span>
+          <span class="check-text">Groovy 编译通过 · <span class="mono">SecureASTCustomizer</span></span>
+        </div>
+        <div class="check-row">
+          <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></span>
+          <span class="check-text">import 全部命中白名单</span>
+        </div>
+        <div class="check-row">
+          <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></span>
+          <span class="check-text">无 receivers 黑名单调用</span>
+        </div>
+        <div class="check-row">
+          <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></span>
+          <span class="check-text">超时阈值 <span class="mono">5000ms</span> 设置生效</span>
+        </div>
+        <div class="check-row muted">
+          <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg></span>
+          <span class="check-text">建议：labels 至少标注 <span class="mono">team</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dry-run -->
+    <div class="section-block">
+      <p class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        干跑 · 因果演示
+      </p>
+
+      <div class="dryrun-event">
+        <div class="dryrun-event-head">
+          <span>示例事件</span>
+          <div class="dryrun-event-actions" id="eventPicker">
+            <button class="event-opt active" data-event="match">命中</button>
+            <button class="event-opt" data-event="miss">未命中</button>
+          </div>
+        </div>
+        <div class="event-json" id="eventJson">
+{
+  <span class="k">"type"</span>: <span class="s">"CDC"</span>,
+  <span class="k">"after"</span>: { <span class="k">"amount"</span>: <span class="n">58200</span>, <span class="k">"orderId"</span>: <span class="s">"20260719-X8742"</span> },
+  <span class="k">"op"</span>: <span class="s">"INSERT"</span>,
+  <span class="k">"meta"</span>: { <span class="k">"db"</span>: <span class="s">"commerce"</span>, <span class="k">"table"</span>: <span class="s">"orders"</span> }
+}</div>
+      </div>
+
+      <button class="run-btn" id="btnRun">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        运行干跑
+      </button>
+
+      <div class="causal-flow" id="causalFlow">
+        <div class="causal-step" data-step="0">
+          <span class="causal-stage">输入</span>
+          <div class="causal-card">
+<span class="k">event.after.amount</span> = <span class="n">58200</span> · <span class="k">op</span>=<span class="s">INSERT</span>
+          </div>
+        </div>
+        <div class="causal-step" data-step="1">
+          <span class="causal-stage">脚本</span>
+          <div class="causal-card success">
+<span class="k">groovy</span>: amount(<span class="n">58200</span>) <span class="n">&gt;</span> threshold(<span class="n">10000</span>) → <span class="b">return true</span> · 耗时 <span class="n">3.2ms</span>
+          </div>
+        </div>
+        <div class="causal-step" data-step="2">
+          <span class="causal-stage">输出</span>
+          <div class="causal-card alert">
+            <span class="alert-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg></span>
+            <div>
+              <div>alerts.emit() · <span class="b">CRITICAL</span></div>
+              <div class="alert-meta">fingerprint=high-amount-order · labels={app=order-service, team=payment}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+  <span id="toastMsg">操作成功</span>
+</div>
+
+<script>
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Tab switching
+document.querySelectorAll('.pane-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.pane-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    document.getElementById('visualTab').style.display = tab === 'visual' ? '' : 'none';
+    document.getElementById('jsonTab').style.display = tab === 'json' ? '' : 'none';
+  });
+});
+
+// Event picker
+const events = {
+  match: {
+    json: `{
+  <span class="k">"type"</span>: <span class="s">"CDC"</span>,
+  <span class="k">"after"</span>: { <span class="k">"amount"</span>: <span class="n">58200</span>, <span class="k">"orderId"</span>: <span class="s">"20260719-X8742"</span> },
+  <span class="k">"op"</span>: <span class="s">"INSERT"</span>,
+  <span class="k">"meta"</span>: { <span class="k">"db"</span>: <span class="s">"commerce"</span>, <span class="k">"table"</span>: <span class="s">"orders"</span> }
+}`,
+    steps: [
+      { stage: '输入', card: `<span class="k">event.after.amount</span> = <span class="n">58200</span> · <span class="k">op</span>=<span class="s">INSERT</span>`, cls: '' },
+      { stage: '脚本', card: `<span class="k">groovy</span>: amount(<span class="n">58200</span>) <span class="n">&gt;</span> threshold(<span class="n">10000</span>) → <span class="b">return true</span> · 耗时 <span class="n">3.2ms</span>`, cls: 'success' },
+      { stage: '输出', card: `<span class="alert-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg></span><div><div>alerts.emit() · <span class="b">CRITICAL</span></div><div class="alert-meta">fingerprint=high-amount-order · labels={app=order-service, team=payment}</div></div>`, cls: 'alert' },
+    ]
+  },
+  miss: {
+    json: `{
+  <span class="k">"type"</span>: <span class="s">"CDC"</span>,
+  <span class="k">"after"</span>: { <span class="k">"amount"</span>: <span class="n">890</span>, <span class="k">"orderId"</span>: <span class="s">"20260719-X8741"</span> },
+  <span class="k">"op"</span>: <span class="s">"INSERT"</span>,
+  <span class="k">"meta"</span>: { <span class="k">"db"</span>: <span class="s">"commerce"</span>, <span class="k">"table"</span>: <span class="s">"orders"</span> }
+}`,
+    steps: [
+      { stage: '输入', card: `<span class="k">event.after.amount</span> = <span class="n">890</span> · <span class="k">op</span>=<span class="s">INSERT</span>`, cls: '' },
+      { stage: '脚本', card: `<span class="k">groovy</span>: amount(<span class="n">890</span>) <span class="n">&gt;</span> threshold(<span class="n">10000</span>) → <span class="b">return false</span> · 耗时 <span class="n">2.1ms</span>`, cls: '' },
+      { stage: '输出', card: `<span class="k">NodeOutcome.SHORT_CIRCUIT</span> · 未触发告警 · 流程终止`, cls: '' },
+    ]
+  }
+};
+
+let currentEvent = 'match';
+
+document.querySelectorAll('.event-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.event-opt').forEach(x => x.classList.remove('active'));
+    opt.classList.add('active');
+    currentEvent = opt.dataset.event;
+    document.getElementById('eventJson').innerHTML = events[currentEvent].json;
+    resetCausal();
+  });
+});
+
+function resetCausal() {
+  const flow = document.getElementById('causalFlow');
+  const data = events[currentEvent];
+  flow.innerHTML = data.steps.map((s, i) => `
+    <div class="causal-step" data-step="${i}">
+      <span class="causal-stage">${s.stage}</span>
+      <div class="causal-card ${s.cls}">${s.card}</div>
+    </div>
+  `).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+async function runDryRun() {
+  resetCausal();
+  if (reduceMotion) {
+    document.querySelectorAll('.causal-step').forEach(s => s.classList.add('show'));
+    return;
+  }
+  const steps = document.querySelectorAll('.causal-step');
+  for (let i = 0; i < steps.length; i++) {
+    steps[i].classList.add('show');
+    await new Promise(r => setTimeout(r, 400));
+  }
+  showToast(currentEvent === 'match' ? '干跑完成 · 命中告警条件' : '干跑完成 · 未命中');
+}
+
+document.getElementById('btnRun').addEventListener('click', runDryRun);
+document.getElementById('btnDryRun').addEventListener('click', () => {
+  document.querySelector('.right-pane').scrollIntoView({behavior: 'smooth', block: 'start'});
+  setTimeout(runDryRun, 400);
+});
+
+document.getElementById('btnValidate').addEventListener('click', () => {
+  showToast('校验通过 · definitionHash 已生成');
+});
+
+// Labels editor
+const labelsRows = document.getElementById('labelsRows');
+const labelsCount = document.getElementById('labelsCount');
+function updateLabelsCount() {
+  labelsCount.textContent = labelsRows.querySelectorAll('.label-row').length;
+}
+function bindLabelRemove(btn) {
+  btn.addEventListener('click', () => {
+    btn.closest('.label-row').remove();
+    updateLabelsCount();
+  });
+}
+document.querySelectorAll('[data-remove-label]').forEach(bindLabelRemove);
+document.getElementById('addLabel').addEventListener('click', () => {
+  const row = document.createElement('div');
+  row.className = 'label-row';
+  row.innerHTML = `
+    <input class="label-input k" value="" placeholder="key" />
+    <input class="label-input" value="" placeholder="value" />
+    <button class="label-remove" data-remove-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+  `;
+  labelsRows.appendChild(row);
+  bindLabelRemove(row.querySelector('[data-remove-label]'));
+  row.querySelector('.label-input.k').focus();
+  updateLabelsCount();
+});
+
+// initial state
+resetCausal();
+if (!reduceMotion) {
+  setTimeout(() => {
+    document.querySelectorAll('.causal-step').forEach((s, i) => {
+      setTimeout(() => s.classList.add('show'), i * 400);
+    });
+  }, 500);
+} else {
+  document.querySelectorAll('.causal-step').forEach(s => s.classList.add('show'));
+}
+</script>
+
+<script type="module">
+// === CodeMirror 6 Groovy Editor (via esm.sh CDN) ===
+import 'https://esm.sh/codemirror@6.0.1';
+import { EditorState } from 'https://esm.sh/@codemirror/state@6.4.1';
+import { EditorView, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from 'https://esm.sh/@codemirror/view@6.26.3';
+import { defaultHighlightStyle, syntaxHighlighting, StreamLanguage } from 'https://esm.sh/@codemirror/language@6.10.0';
+import { linter } from 'https://esm.sh/@codemirror/lint@6.5.0';
+import { autocompletion } from 'https://esm.sh/@codemirror/autocomplete@6.12.0';
+import { groovy } from 'https://esm.sh/@codemirror/legacy-modes@6.3.3/mode/groovy';
+
+const DEFAULT_SCRIPT = `// 高额订单判定 · event.amount &gt; 阈值则触发告警
+def amount = event.getAt("after.amount") ?: event.getAt("amount")
+def threshold = 10000
+
+if (amount as BigDecimal &gt; threshold) {
+  alerts.emit(
+    "high-amount-order",
+    "CRITICAL",
+    ["amount": amount, "orderId": event.getAt("orderId")],
+    ["summary": "订单金额 ¥\${amount} 超过阈值"]
+  )
+  return true   // short-circuit 后续节点
+}
+return false`;
+
+// 沙箱规则（来自 GroovyScriptEngineImpl）
+const FORBIDDEN_RECEIVERS = ['System', 'Runtime', 'Thread', 'Class', 'ClassLoader', 'ProcessBuilder', 'ScriptEngine', 'GroovyClassLoader'];
+const ALLOWED_IMPORTS = new Set([
+  'java.lang.Math', 'java.util.Date', 'java.time.Instant',
+  'java.time.LocalDate', 'java.time.LocalDateTime',
+  'java.math.BigDecimal', 'java.math.BigInteger',
+  'java.util.Map', 'java.util.List', 'java.util.Set'
+]);
+
+const sandboxLinter = linter((view) => {
+  const src = view.state.doc.toString();
+  const diags = [];
+  // receivers 黑名单
+  const re = new RegExp('\\\\b(' + FORBIDDEN_RECEIVERS.join('|') + ')\\\\b', 'g');
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    diags.push({
+      from: m.index,
+      to: m.index + m[0].length,
+      severity: 'error',
+      message: m[1] + ' 在 receivers 黑名单中（SecureASTCustomizer）'
+    });
+  }
+  // import 白名单
+  const impRe = /import\s+(?:static\s+)?([a-zA-Z_$][\w$.]*)/g;
+  while ((m = impRe.exec(src)) !== null) {
+    if (!ALLOWED_IMPORTS.has(m[1])) {
+      diags.push({
+        from: m.index,
+        to: m.index + m[0].length,
+        severity: 'error',
+        message: 'import "' + m[1] + '" 不在白名单中（IMPORTS_WHITELIST）'
+      });
+    }
+  }
+  return diags;
+});
+
+// 上下文补全：event/alerts/db/ctx/now
+const GLOBALS = [
+  { label: 'event', detail: 'Event', info: '当前事件。getAt(path) 解析路径' },
+  { label: 'alerts', detail: 'AlertsApi', info: 'emit(fingerprint, severity, labels, annotations)' },
+  { label: 'db', detail: 'DbApi', info: 'query(sql, args) 只读' },
+  { label: 'ctx', detail: 'ScriptContext', info: '跨节点共享' },
+  { label: 'now', detail: 'Supplier<Instant>', info: 'now() 当前时间' }
+];
+const METHODS = {
+  alerts: [{ label: 'emit', detail: '(fp, sev, labels?, annotations?)' }],
+  event: [{ label: 'getAt', detail: '(path)' }]
+};
+const completion = autocompletion({
+  override: [
+    (ctx) => {
+      const word = ctx.matchWord();
+      if (!word) return null;
+      return { from: word.from, options: GLOBALS.map(g => ({ label: g.label, type: 'variable', detail: g.detail, info: g.info })) };
+    },
+    (ctx) => {
+      const before = ctx.matchBefore(/(event|alerts|db|ctx|now)\./);
+      if (!before) return null;
+      const t = before.text.split('.')[0];
+      return { from: before.to, options: (METHODS[t] || []).map(m => ({ label: m.label, type: 'function', detail: m.detail })) };
+    }
+  ],
+  activateOnTyping: true
+});
+
+// 主题：暗色 #0F172A 卡片
+const theme = EditorView.theme({
+  '&': { backgroundColor: 'transparent', color: '#CBD5E1', fontSize: '12.5px', fontFamily: "'Fira Code', monospace", height: '100%' },
+  '.cm-content': { caretColor: '#3B82F6', padding: '14px 16px' },
+  '.cm-gutters': { backgroundColor: 'rgba(255,255,255,0.02)', color: '#475569', border: 'none', borderRight: '1px solid rgba(255,255,255,0.06)' },
+  '.cm-activeLine': { backgroundColor: 'rgba(59, 130, 246, 0.06)' },
+  '.cm-activeLineGutter': { backgroundColor: 'rgba(59, 130, 246, 0.10)', color: '#94A3B8' },
+  '.cm-cursor': { borderLeftColor: '#3B82F6' },
+  '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(59, 130, 246, 0.22) !important' },
+  '.cm-tooltip': { backgroundColor: '#1E293B', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '6px', color: '#E2E8F0' },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'rgba(59, 130, 246, 0.20)', color: '#fff' },
+  '.cm-lintRange-error': { textDecoration: 'underline wavy #DC2626' },
+  '.cm-lintRange-warning': { textDecoration: 'underline wavy #D97706' }
+});
+
+const host = document.getElementById('groovyHost');
+if (host) {
+  const view = new EditorView({
+    state: EditorState.create({
+      doc: DEFAULT_SCRIPT,
+      extensions: [
+        StreamLanguage.define(groovy),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        lineNumbers(),
+        highlightActiveLine(),
+        highlightActiveLineGutter(),
+        sandboxLinter,
+        completion,
+        theme,
+        EditorView.lineWrapping,
+        EditorView.editable.of(true)
+      ]
+    }),
+    parent: host
+  });
+  // 同步行数显示
+  const updateLineInfo = () => {
+    const lines = view.state.doc.lines;
+    const chars = view.state.doc.length;
+    const lineInfo = document.querySelector('.check-node .node-head div[style*="Fira Code"]');
+    if (lineInfo) {
+      const ok = lineInfo.querySelector('span:first-child');
+      if (ok) ok.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>编译通过';
+      const count = lineInfo.querySelector('span:last-child');
+      if (count) count.textContent = lines + ' 行 · ' + chars + ' 字符';
+    }
+  };
+  updateLineInfo();
+  view.dispatch({}); // 触发首次
+  // 监听后续变化
+  view.dom.addEventListener('input', updateLineInfo);
+}
+</script>
+
+</body>
+</html>

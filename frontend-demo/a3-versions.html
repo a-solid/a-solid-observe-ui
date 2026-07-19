@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-Solid Observe · 版本管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --color-primary: #1E40AF;
+  --color-primary-soft: rgba(30, 64, 175, 0.08);
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-background: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-border: #DBEAFE;
+  --color-border-soft: rgba(30, 64, 175, 0.08);
+
+  --severity-critical: #DC2626;
+  --severity-warning: #D97706;
+  --severity-info: #0EA5E9;
+
+  --pipe-published: #16A34A;
+  --pipe-draft: #D97706;
+  --pipe-archived: #64748B;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.10);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(217, 119, 6, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+.num, .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+/* === Top Nav === */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(248, 250, 252, 0.72);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.topbar-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 14px var(--space-2xl);
+  display: flex; align-items: center; gap: var(--space-xl);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+}
+.brand-mark::after {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), transparent 60%);
+}
+.nav-spacer { flex: 1; }
+.role-tabs {
+  display: inline-flex;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px; gap: 2px;
+}
+.role-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer; border: none; background: transparent;
+  transition: all 200ms var(--ease);
+  text-decoration: none;
+}
+.role-tab.active { background: var(--color-primary); color: #fff; }
+
+/* === Page header === */
+.page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-2xl);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-xl);
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pipeline-name-tag {
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  padding: 4px 10px;
+  background: var(--color-primary-soft);
+  border-radius: 6px;
+}
+.page-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* === Two-pane === */
+.version-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* === Left timeline === */
+.timeline-pane {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 100px;
+}
+.timeline-head {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-md) 0;
+}
+
+.version-list {
+  position: relative;
+  padding-left: 24px;
+}
+.version-list::before {
+  content: '';
+  position: absolute;
+  left: 7px; top: 8px; bottom: 8px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--pipe-published), var(--color-secondary), var(--pipe-archived));
+  border-radius: 2px;
+}
+
+.version-item {
+  position: relative;
+  padding: 10px 0 16px 8px;
+  cursor: pointer;
+}
+.version-item::before {
+  content: '';
+  position: absolute;
+  left: -24px; top: 14px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border: 2px solid var(--color-secondary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  transition: all 200ms var(--ease);
+  z-index: 1;
+}
+.version-item:hover::before {
+  transform: scale(1.15);
+}
+.version-item.published::before {
+  border-color: var(--pipe-published);
+  background: var(--pipe-published);
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.2);
+}
+.version-item.current::before {
+  width: 20px; height: 20px;
+  top: 12px;
+  left: -26px;
+  border-color: var(--pipe-published);
+  background: var(--pipe-published);
+  box-shadow: 0 0 0 4px rgba(22,163,74,0.2), 0 0 12px rgba(22,163,74,0.4);
+}
+.version-item.draft::before {
+  border-color: var(--pipe-draft);
+  box-shadow: 0 0 0 3px rgba(217,119,6,0.18);
+}
+.version-item.archived::before {
+  border-color: var(--pipe-archived);
+  background: var(--pipe-archived);
+  box-shadow: 0 0 0 3px rgba(100,116,139,0.18);
+}
+
+.version-item.selected {
+  background: rgba(59,130,246,0.06);
+  border-radius: 8px;
+  margin-left: -8px;
+  padding-left: 16px;
+}
+
+.version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.version-num {
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.version-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.version-status-tag.published { background: rgba(22,163,74,0.12); color: var(--pipe-published); }
+.version-status-tag.draft { background: rgba(217,119,6,0.12); color: var(--pipe-draft); }
+.version-status-tag.archived { background: rgba(100,116,139,0.12); color: var(--pipe-archived); }
+.version-status-tag.current {
+  background: var(--pipe-published);
+  color: #fff;
+}
+.version-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+  font-family: 'Fira Code', monospace;
+}
+
+.diff-hint {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: rgba(30, 64, 175, 0.04);
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.diff-hint svg {
+  width: 14px; height: 14px;
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 4px;
+  color: var(--color-primary);
+}
+
+/* === Right: diff pane === */
+.diff-pane {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-head {
+  padding: var(--space-lg) var(--space-xl);
+  border-bottom: 1px solid var(--color-border-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+.diff-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.diff-from, .diff-to {
+  font-family: 'Fira Code', monospace;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.diff-from {
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--severity-critical);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+.diff-to {
+  background: rgba(22, 163, 74, 0.08);
+  color: var(--exec-success);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+.diff-arrow {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+.diff-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: 'Fira Code', monospace;
+}
+.diff-stats {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.diff-stat {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'Fira Code', monospace;
+}
+.diff-stat.added { background: rgba(22,163,74,0.10); color: var(--exec-success); }
+.diff-stat.removed { background: rgba(220,38,38,0.10); color: var(--severity-critical); }
+
+.diff-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--color-border-soft);
+}
+.diff-side {
+  background: #0F172A;
+  padding: var(--space-md) 0;
+  min-height: 460px;
+  overflow-x: auto;
+}
+.diff-side-head {
+  padding: 6px var(--space-md) 10px;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+  position: sticky;
+  top: 0;
+  background: #0F172A;
+}
+.diff-line {
+  padding: 2px var(--space-md);
+  font-family: 'Fira Code', monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #CBD5E1;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.diff-line .ln {
+  color: #475569;
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+  user-select: none;
+}
+.diff-line.added {
+  background: rgba(22, 163, 74, 0.08);
+  color: #86EFAC;
+}
+.diff-line.added::before { content: '+'; color: var(--exec-success); font-weight: 700; }
+.diff-line.removed {
+  background: rgba(220, 38, 38, 0.08);
+  color: #FECACA;
+  text-decoration: line-through;
+  text-decoration-color: rgba(220, 38, 38, 0.5);
+}
+.diff-line.removed::before { content: '-'; color: var(--severity-critical); font-weight: 700; }
+.diff-line .k { color: #93C5FD; }
+.diff-line .s { color: #86EFAC; }
+.diff-line .n { color: #FBBF24; }
+.diff-line .kw { color: #C084FC; font-weight: 600; }
+.diff-line .var { color: #FBA74D; }
+.diff-line .fn { color: #60A5FA; }
+.diff-line .cmt { color: #64748B; font-style: italic; }
+.diff-line.added .k, .diff-line.added .s, .diff-line.added .n { filter: brightness(1.15); }
+.diff-line.removed .k, .diff-line.removed .s, .diff-line.removed .n { filter: brightness(0.9); }
+
+.diff-line.highlight {
+  background: rgba(217, 119, 6, 0.15);
+  outline: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+.diff-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #1E293B;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px 10px 0 0;
+}
+.diff-toolbar-left { display: flex; align-items: center; gap: 8px; }
+.diff-toolbar .diff-side-head {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #94A3B8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.diff-mode-switch {
+  display: inline-flex;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+.mode-btn {
+  padding: 5px 12px;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 200ms var(--ease);
+}
+.mode-btn:hover { color: #E2E8F0; }
+.mode-btn.active {
+  background: rgba(59, 130, 246, 0.20);
+  color: #93C5FD;
+}
+
+.diff-actions {
+  padding: var(--space-md) var(--space-xl);
+  background: rgba(248, 250, 252, 0.5);
+  border-top: 1px solid var(--color-border-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 200ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn svg { width: 13px; height: 13px; }
+.btn-secondary {
+  background: rgba(255,255,255,0.8);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.btn-secondary:hover { background: #fff; border-color: var(--color-secondary); }
+.btn-warn {
+  background: rgba(217, 119, 6, 0.10);
+  color: var(--color-accent);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+.btn-warn:hover { background: rgba(217, 119, 6, 0.18); }
+.btn-danger {
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--severity-critical);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  position: relative;
+}
+.btn-danger:hover {
+  background: rgba(220, 38, 38, 0.15);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.28);
+}
+.btn-primary:hover {
+  background: #1E3A8A;
+  transform: translateY(-1px);
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 200ms var(--ease);
+}
+.confirm-overlay.show { display: flex; opacity: 1; }
+.confirm-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: var(--space-xl);
+  max-width: 420px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  transform: scale(0.92);
+  transition: transform 200ms var(--ease);
+}
+.confirm-overlay.show .confirm-modal { transform: scale(1); }
+.confirm-icon {
+  width: 56px; height: 56px;
+  margin: 0 auto var(--space-md);
+  background: rgba(220, 38, 38, 0.10);
+  color: var(--severity-critical);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.confirm-icon svg { width: 28px; height: 28px; }
+.confirm-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+.confirm-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-lg) 0;
+  line-height: 1.6;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* === Toast === */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 300ms var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast svg { width: 16px; height: 16px; color: var(--pipe-published); }
+
+@media (max-width: 1100px) {
+  .version-grid { grid-template-columns: 1fr; }
+  .timeline-pane { position: static; }
+}
+@media (max-width: 768px) {
+  .page { padding: var(--space-md); }
+  .topbar-inner { padding: 12px var(--space-md); gap: var(--space-md); }
+  .diff-body { grid-template-columns: 1fr; }
+  .diff-actions { flex-direction: column; align-items: stretch; }
+  .diff-actions > div { display: flex; gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="c1-dashboard.html" class="brand">
+      <span class="brand-mark"></span>
+      <span>A-Solid Observe</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <nav class="role-tabs">
+      <a href="c1-dashboard.html" class="role-tab">大盘</a>
+      <a href="b1-alerts.html" class="role-tab">告警</a>
+      <a href="a1-pipelines.html" class="role-tab active">配置</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        版本管理
+        <span class="pipeline-name-tag">namespace/ops · high-amount-order-alert</span>
+      </h1>
+      <p class="page-subtitle"><span class="num">5</span> 个版本 · 当前已发布 <span class="mono" style="color: var(--pipe-published); font-weight: 600;">v3</span> · 待发布 <span class="mono" style="color: var(--pipe-draft); font-weight: 600;">v4</span></p>
+    </div>
+  </div>
+
+  <div class="version-grid">
+    <!-- Timeline -->
+    <aside class="timeline-pane">
+      <p class="timeline-head">版本时间线</p>
+      <div class="version-list">
+        <div class="version-item draft" data-v="v4">
+          <div class="version-row">
+            <span class="version-num">v4</span>
+            <span class="version-status-tag draft">DRAFT</span>
+          </div>
+          <div class="version-meta">alice · 今天 14:08</div>
+        </div>
+        <div class="version-item published current" data-v="v3">
+          <div class="version-row">
+            <span class="version-num">v3 · current</span>
+            <span class="version-status-tag current">PUBLISHED</span>
+          </div>
+          <div class="version-meta">bob · 5 天前 · hash 0x9a4f</div>
+        </div>
+        <div class="version-item published selected" data-v="v2">
+          <div class="version-row">
+            <span class="version-num">v2</span>
+            <span class="version-status-tag published">PUBLISHED</span>
+          </div>
+          <div class="version-meta">alice · 2 周前 · hash 0x7b22</div>
+        </div>
+        <div class="version-item archived" data-v="v1">
+          <div class="version-row">
+            <span class="version-num">v1</span>
+            <span class="version-status-tag archived">ARCHIVED</span>
+          </div>
+          <div class="version-meta">carol · 1 个月前 · hash 0x4f10</div>
+        </div>
+        <div class="version-item archived" data-v="v0">
+          <div class="version-row">
+            <span class="version-num">v0</span>
+            <span class="version-status-tag archived">ARCHIVED</span>
+          </div>
+          <div class="version-meta">carol · 2 个月前 · hash 0x12ab</div>
+        </div>
+      </div>
+
+      <div class="diff-hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        已选 v2 → v4 做 diff
+      </div>
+    </aside>
+
+    <!-- Diff -->
+    <section class="diff-pane">
+      <div class="diff-head">
+        <div>
+          <h2 class="diff-title">
+            <span class="diff-from">v2</span>
+            <span class="diff-arrow">→</span>
+            <span class="diff-to">v4</span>
+            <span style="font-size: 13px; font-weight: 500; color: var(--color-text-muted);">scriptSource 变更</span>
+          </h2>
+          <div class="diff-meta" style="margin-top: 6px;">2 个版本跨度 · Groovy 脚本调整：阈值收紧 + 增加 labels 输出</div>
+        </div>
+        <div class="diff-stats">
+          <span class="diff-stat added">+ 6 行</span>
+          <span class="diff-stat removed">- 2 行</span>
+        </div>
+      </div>
+
+      <div class="diff-toolbar">
+        <div class="diff-toolbar-left">
+          <span class="diff-side-head">v2 → v4 · nodes[0].scriptSource · Groovy</span>
+        </div>
+        <div class="diff-mode-switch" id="diffModeSwitch">
+          <button class="mode-btn active" data-mode="merge">合并视图</button>
+          <button class="mode-btn" data-mode="side">并排视图</button>
+        </div>
+      </div>
+      <div class="diff-body" style="grid-template-columns: 1fr; background: #0F172A; border-radius: 10px; overflow: hidden;">
+        <div id="mergeHost" style="min-height: 420px;"></div>
+      </div>
+
+      <div class="diff-actions">
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary" id="btnViewV2">查看 v2 详情</button>
+          <button class="btn btn-secondary">对比其他版本</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-danger" id="btnRollback">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            回滚到 v2
+          </button>
+          <button class="btn btn-warn">归档 v2</button>
+          <button class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            发布 v4
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- Confirm overlay -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <div class="confirm-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>
+    </div>
+    <h3 class="confirm-title">确认回滚到 v2？</h3>
+    <p class="confirm-desc">这将创建 v5（基于 v2 的 definition），并自动发布。当前 v3 会归档保存。已有告警不会受影响。</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" id="btnCancelConfirm">取消</button>
+      <button class="btn btn-danger" id="btnConfirmRollback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        确认回滚
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+  <span id="toastMsg">操作成功</span>
+</div>
+
+<script>
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// version item click
+document.querySelectorAll('.version-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.version-item').forEach(x => x.classList.remove('selected'));
+    item.classList.add('selected');
+    const v = item.dataset.v;
+    showToast(`已选 ${v} 加入 diff 对比`);
+  });
+});
+
+// rollback confirm
+document.getElementById('btnRollback').addEventListener('click', () => {
+  document.getElementById('confirmOverlay').classList.add('show');
+});
+document.getElementById('btnCancelConfirm').addEventListener('click', () => {
+  document.getElementById('confirmOverlay').classList.remove('show');
+});
+document.getElementById('btnConfirmRollback').addEventListener('click', () => {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  showToast('已提交回滚 · v5 创建中');
+});
+document.getElementById('confirmOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'confirmOverlay') {
+    document.getElementById('confirmOverlay').classList.remove('show');
+  }
+});
+document.getElementById('btnViewV2').addEventListener('click', () => {
+  showToast('查看 v2 详情');
+});
+</script>
+
+<script type="module">
+// === @codemirror/merge 真实 diff 视图 ===
+import { EditorState } from 'https://esm.sh/@codemirror/state@6.4.1';
+import { EditorView, lineNumbers, highlightActiveLine } from 'https://esm.sh/@codemirror/view@6.26.3';
+import { defaultHighlightStyle, syntaxHighlighting, StreamLanguage, HighlightStyle } from 'https://esm.sh/@codemirror/language@6.10.0';
+import { tags } from 'https://esm.sh/@lezer/highlight@1.2.3';
+import { MergeView } from 'https://esm.sh/@codemirror/merge@6.7.0';
+import { groovy } from 'https://esm.sh/@codemirror/legacy-modes@6.3.3/mode/groovy';
+
+const OLD_SCRIPT = `// 高额订单判定
+def amount = event.getAt("amount")
+def threshold = 5000
+
+if (amount as BigDecimal > threshold) {
+  alerts.emit("high-amount", "WARNING")
+  return true
+}
+return false`;
+
+const NEW_SCRIPT = `// 高额订单判定 · 收紧阈值 + 携带业务标签
+def amount = event.getAt("after.amount") ?: event.getAt("amount")
+def threshold = 10000
+
+if (amount as BigDecimal > threshold) {
+  alerts.emit(
+    "high-amount-order",
+    "CRITICAL",
+    ["app": "order-service", "team": "payment"],
+    ["summary": "金额 ¥\${amount}"]
+  )
+  return true
+}
+return false`;
+
+// Groovy 高亮样式（暗色配色匹配 #0F172A）
+const groovyHighlightStyle = HighlightStyle.define([
+  { tag: tags.keyword, color: '#C084FC', fontWeight: '600' },
+  { tag: tags.atom, color: '#F472B6' },
+  { tag: tags.number, color: '#FBBF24' },
+  { tag: tags.string, color: '#86EFAC' },
+  { tag: tags.comment, color: '#64748B', fontStyle: 'italic' },
+  { tag: tags.variableName, color: '#FBA74D' },
+  { tag: tags.function(tags.variableName), color: '#60A5FA' },
+  { tag: tags.propertyName, color: '#94A3B8' },
+  { tag: tags.punctuation, color: '#94A3B8' },
+  { tag: tags.operator, color: '#C084FC' },
+]);
+
+// 主题：暗色 + 匹配 #0F172A 卡片
+const mergeTheme = EditorView.theme({
+  '&': { backgroundColor: 'transparent', color: '#CBD5E1', fontSize: '12.5px', fontFamily: "'Fira Code', monospace" },
+  '&.cm-focused': { outline: 'none' },
+  '.cm-content': { caretColor: '#3B82F6', padding: '12px 14px' },
+  '.cm-gutters': { backgroundColor: 'rgba(255,255,255,0.02)', color: '#475569', border: 'none', borderRight: '1px solid rgba(255,255,255,0.06)' },
+  '.cm-activeLine': { backgroundColor: 'rgba(59, 130, 246, 0.06)' },
+  '.cm-activeLineGutter': { backgroundColor: 'rgba(59, 130, 246, 0.10)', color: '#94A3B8' },
+  '.cm-cursor': { borderLeftColor: '#3B82F6' },
+  '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(59, 130, 246, 0.22) !important' },
+  // Merge 视图特有
+  '.cm-mergeView': { background: 'transparent' },
+  '.cm-mergeView-editor': { background: 'transparent' },
+  '.cm-deletedChunk': { background: 'rgba(248, 113, 113, 0.10)', borderLeft: '2px solid rgba(248, 113, 113, 0.6)' },
+  '.cm-insertedChunk': { background: 'rgba(134, 239, 172, 0.10)', borderLeft: '2px solid rgba(134, 239, 172, 0.6)' },
+  '.cm-deletedChunkGutter': { background: 'rgba(248, 113, 113, 0.08)' },
+  '.cm-insertedChunkGutter': { background: 'rgba(134, 239, 172, 0.08)' },
+  '.cm-changedLine, .cm-changedGutter': { background: 'rgba(59, 130, 246, 0.10)' },
+  '.cm-mergeGap': { background: 'rgba(255,255,255,0.02)' },
+  '.cm-gutterElement': { color: '#475569', padding: '0 8px 0 6px' },
+  // gutter 中的 +/- 标记
+  '.cm-gutter .cm-insertedLineMarker': { color: '#86EFAC' },
+  '.cm-gutter .cm-deletedLineMarker': { color: '#F87171' },
+});
+
+const sharedExtensions = [
+  StreamLanguage.define(groovy),
+  syntaxHighlighting(groovyHighlightStyle),
+  mergeTheme,
+  EditorView.lineWrapping,
+  EditorState.readOnly.of(true),
+];
+
+const host = document.getElementById('mergeHost');
+let mergeView = null;
+
+function buildMerge(mode) {
+  if (mergeView) {
+    mergeView.destroy();
+    mergeView = null;
+  }
+  mergeView = new MergeView({
+    a: { doc: OLD_SCRIPT, extensions: sharedExtensions },
+    b: { doc: NEW_SCRIPT, extensions: sharedExtensions },
+    orientation: mode === 'side' ? 'a-b' : 'a-b',
+    // merge 模式只在 b 编辑器展示，side 模式两边并列
+    revertControls: 'a',
+    gutter: true,
+    highlightChanges: true,
+    collapseUnchanged: { minSize: 4, marginAbove: 8, marginBelow: 8 },
+  });
+  host.innerHTML = '';
+  host.appendChild(mergeView.dom);
+  // 强制并排：默认 merge 是 side-by-side，开关切到 "合并视图" 时折叠未变区域
+}
+
+// 初始化：默认并排（side-by-side）
+buildMerge('side');
+
+// 模式切换
+document.querySelectorAll('#diffModeSwitch .mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#diffModeSwitch .mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode = btn.dataset.mode;
+    if (mode === 'merge') {
+      // merge 模式：只显示右侧 + gutter 高亮
+      buildMerge('merge');
+      // 隐藏左侧 editor
+      const aEditor = host.querySelector('.cm-mergeView .cm-merge-a');
+      if (aEditor) aEditor.style.display = 'none';
+      const gap = host.querySelector('.cm-mergeView .cm-merge-gap');
+      if (gap) gap.style.display = 'none';
+    } else {
+      buildMerge('side');
+    }
+  });
+});
+</script>
+
+</body>
+</html>
