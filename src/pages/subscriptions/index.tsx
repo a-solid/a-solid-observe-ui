@@ -99,7 +99,7 @@ function SubCard({ s }: { s: Subscription }) {
 function Subscriptions() {
   return (
     <>
-      <Topbar activeRole="配置" />
+      <Topbar />
       <Subtabs tabs={CONFIG_SUBTABS} />
 
       <main className="page subscriptions-page">

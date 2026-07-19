@@ -98,7 +98,7 @@ function Versions() {
 
   return (
     <>
-      <Topbar activeRole="配置" showNamespace={false} />
+      <Topbar showNamespace={false} />
 
       <main className="page versions-page">
         <div className="page-header">

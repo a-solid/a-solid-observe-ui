@@ -147,7 +147,7 @@ function Alerts() {
 
   return (
     <>
-      <Topbar activeRole="告警" rightExtra={connectionPill} />
+      <Topbar rightExtra={connectionPill} />
 
       <main className="page">
         <div className="page-header">

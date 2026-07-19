@@ -123,7 +123,7 @@ function Pipelines() {
 
   return (
     <>
-      <Topbar activeRole="配置" />
+      <Topbar />
       <Subtabs tabs={CONFIG_SUBTABS} />
 
       <main className="page pipelines-page">

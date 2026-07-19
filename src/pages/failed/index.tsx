@@ -215,7 +215,7 @@ function Failed() {
 
   return (
     <>
-      <Topbar activeRole="告警" />
+      <Topbar />
       <Subtabs tabs={SUBTABS} />
 
       <main className="page failed-page">

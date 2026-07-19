@@ -52,7 +52,7 @@ function AlertDetail() {
 
   return (
     <>
-      <Topbar activeRole="告警" />
+      <Topbar />
 
       <div className="breadcrumb">
         <Link to="/alerts">告警列表</Link>

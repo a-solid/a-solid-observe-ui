@@ -176,7 +176,7 @@ function Dashboard() {
 
   return (
     <>
-      <Topbar showNamespace={false} activeRole="大盘" leftExtra={timeRange} />
+      <Topbar showNamespace={false} leftExtra={timeRange} />
 
       <main className="page dashboard-page">
         {/* Hero: pipeline + headline KPIs */}
