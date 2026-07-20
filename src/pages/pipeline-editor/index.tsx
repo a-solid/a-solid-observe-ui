@@ -267,7 +267,7 @@ function PipelineEditor() {
     }
   }
 
-  const handleSaveVersion = async () => {
+  const handleNewVersion = async () => {
     setSaving(true)
     try {
       if (isNew) {
@@ -287,7 +287,7 @@ function PipelineEditor() {
         await versionApi.saveVersion(namespace, pipelineName, {
           pipelineJson: buildPipelineJson(),
         })
-        toast.success('Version saved')
+        toast.success('New version saved')
       }
     } catch {
       // error already toasted
@@ -451,9 +451,9 @@ function PipelineEditor() {
           <button className="btn btn-warn" onClick={() => { document.querySelector('.right-pane')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.setTimeout(handleDryRun, 400) }} disabled={dryRunning}>
             {ICON_BOLT}Dry Run
           </button>
-          <button className="btn btn-secondary" onClick={handleSaveVersion} disabled={saving}>
+          <button className="btn btn-secondary" onClick={handleNewVersion} disabled={saving}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
-            Save Version
+            New Version
           </button>
           <button className="btn btn-primary" onClick={handlePublish} disabled={publishing}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
