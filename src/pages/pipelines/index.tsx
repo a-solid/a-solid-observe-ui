@@ -143,7 +143,7 @@ function Pipelines() {
               <span className="num" style={{ color: 'var(--pipe-archived)' }}>{counts.arch}</span> ARCHIVED
             </p>
           </div>
-          <Link className="btn-new" to={`/pipelines/new/edit`}>
+          <Link className="btn-new" to="/pipelines/new">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg>
             New Rule
           </Link>

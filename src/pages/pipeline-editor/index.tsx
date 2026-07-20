@@ -156,10 +156,11 @@ function InjectResultCard({ result }: { result: InjectResultDto }) {
 }
 
 function PipelineEditor() {
-  const { id } = useParams<{ id: string }>()
+  const { name: urlName } = useParams<{ name?: string }>()
   const { namespace } = useNamespace()
-  const pipelineName = id ?? ''
-  const isNew = pipelineName === 'new'
+  // /pipelines/new → no name param = create mode; /pipelines/:name/edit → edit mode
+  const isNew = !urlName
+  const pipelineName = urlName ?? ''
 
   // Only fetch existing pipeline; skip for new
   const { data: pipeline } = usePipeline(namespace, isNew ? '' : pipelineName)

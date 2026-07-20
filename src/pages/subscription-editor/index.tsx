@@ -99,10 +99,11 @@ function BranchPaths({ bindings }: { bindings: PipelineBinding[] }) {
 }
 
 function SubscriptionEditor() {
-  const { id } = useParams<{ id: string }>()
+  const { name: urlName } = useParams<{ name?: string }>()
   const { namespace } = useNamespace()
-  const subscriptionName = id ?? ''
-  const isNew = subscriptionName === 'new'
+  // /subscriptions/new → no name param = create mode; /subscriptions/:name/edit → edit mode
+  const isNew = !urlName
+  const subscriptionName = urlName ?? ''
 
   const { data: existing } = useSubscription(namespace, isNew ? '' : subscriptionName)
   const { data: pipelines = [] } = usePipelines(namespace)

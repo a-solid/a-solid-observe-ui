@@ -59,9 +59,9 @@ const sharedExtensions = [
 ]
 
 function Versions() {
-  const { id } = useParams<{ id: string }>()
+  const { name: urlName } = useParams<{ name?: string }>()
   const { namespace } = useNamespace()
-  const pipelineName = id ?? ''
+  const pipelineName = urlName ?? ''
 
   const { data: versions = [], isLoading } = useVersions(namespace, pipelineName)
   const publishMutation = usePublishVersion(namespace, pipelineName)

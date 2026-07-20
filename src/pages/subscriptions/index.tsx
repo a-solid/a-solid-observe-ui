@@ -167,7 +167,7 @@ function Subscriptions() {
               <span className="num">{subscriptions.length}</span> subscriptions · CDC / CRON / API sources
             </p>
           </div>
-          <Link className="btn-new" to="/subscriptions/new/edit">
+          <Link className="btn-new" to="/subscriptions/new">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg>
             New Subscription
           </Link>
