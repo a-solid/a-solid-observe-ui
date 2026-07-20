@@ -4,20 +4,60 @@ import { toast } from 'sonner'
 const baseURL = import.meta.env.VITE_API_BASE ?? '/'
 
 /**
- * JSON.parse reviver: integers beyond JS safe range (2^53-1) are quoted in the
- * raw response so they survive as strings.  Pattern: an integer with 16+ digits
- * (or > MAX_SAFE_INTEGER) in a JSON value position gets string-wrapped.
+ * State-machine based big-int preserver.  Walks the raw JSON text char-by-char,
+ * tracking whether we are inside a string.  Only quotes integers that appear at
+ * JSON value positions — never touches numbers inside string content (e.g.
+ * definitionJson payloads).
  */
-const BIG_INT_RE = /(?<=[:\s,\[])\s*(-?\d{16,})(?=\s*[,\]\}])/g
-
 function preserveBigInts(text: string): string {
-  return text.replace(BIG_INT_RE, (_, digits) => {
-    const n = BigInt(digits)
-    if (n > BigInt(Number.MAX_SAFE_INTEGER) || n < BigInt(Number.MIN_SAFE_INTEGER)) {
-      return `"${digits}"`
+  const out: string[] = []
+  let inString = false
+  let escaped = false
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+
+    if (escaped) {
+      out.push(ch)
+      escaped = false
+      continue
     }
-    return digits
-  })
+
+    if (inString) {
+      if (ch === '\\') escaped = true
+      else if (ch === '"') inString = false
+      out.push(ch)
+      continue
+    }
+
+    // Outside a string — look for numbers
+    if (ch === '-' || (ch >= '0' && ch <= '9')) {
+      let num = ch
+      let j = i + 1
+      while (j < text.length && text[j] >= '0' && text[j] <= '9') {
+        num += text[j]
+        j++
+      }
+      if (num.length >= 16) {
+        const n = BigInt(num)
+        if (n > BigInt(Number.MAX_SAFE_INTEGER) || n < BigInt(Number.MIN_SAFE_INTEGER)) {
+          out.push('"', num, '"')
+          i = j - 1
+          continue
+        }
+      }
+      out.push(num)
+      i = j - 1
+      continue
+    }
+
+    if (ch === '"') {
+      inString = true
+    }
+    out.push(ch)
+  }
+
+  return out.join('')
 }
 
 export const client = axios.create({
