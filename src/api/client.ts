@@ -67,8 +67,12 @@ export const client = axios.create({
   transformResponse: [
     (data) => {
       if (typeof data === 'string') {
-        // Guard large int64 values before native JSON.parse
-        return JSON.parse(preserveBigInts(data))
+        try {
+          return JSON.parse(preserveBigInts(data))
+        } catch {
+          // Fallback: native parse (loses precision on large int64, but avoids crashes)
+          return JSON.parse(data)
+        }
       }
       return data
     },

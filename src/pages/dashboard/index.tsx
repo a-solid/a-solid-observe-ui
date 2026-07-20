@@ -19,6 +19,8 @@ type TimeRange = 'today' | '7d' | '30d'
 
 function timeRangeToDates(range: TimeRange): { from: string; to: string } {
   const now = new Date()
+  // Round "to" to current hour to avoid re-fetching every second
+  now.setMinutes(0, 0, 0)
   const to = now.toISOString()
   let from: Date
   if (range === 'today') {
@@ -96,12 +98,15 @@ function TopList({ items }: { items: { name: string; count: number }[] }) {
 function Dashboard() {
   const { namespace } = useNamespace()
   const [range, setRange] = useState<TimeRange>('today')
-  const { from, to } = timeRangeToDates(range)
+  const { from, to } = useMemo(() => timeRangeToDates(range), [range])
 
-  // All API calls use the same time range
-  const { data: dash } = useDashboard({ namespace, from, to, limit: 5 })
-  const { data: alertTs = [] } = useAlertTimeseries({ namespace, from, to, bucket: '1h' })
-  const { data: execTs = [] } = useExecutionTimeseries({ namespace, from, to, bucket: '1h' })
+  // Memoize params so React Query doesn't re-fetch on every render
+  const dashParams = useMemo(() => ({ namespace, from, to, limit: 5 }), [namespace, from, to])
+  const tsParams = useMemo(() => ({ namespace, from, to, bucket: '1h' as const }), [namespace, from, to])
+
+  const { data: dash } = useDashboard(dashParams)
+  const { data: alertTs = [] } = useAlertTimeseries(tsParams)
+  const { data: execTs = [] } = useExecutionTimeseries(tsParams)
 
   // Charts
   const trendChart = useECharts(buildTrendOption(alertTs), [alertTs])
