@@ -65,7 +65,7 @@ const NAV_SEGMENTS: RoleSegment[] = [
   },
   {
     key: 'alert',
-    label: 'Alert Responders',
+    label: 'Monitor',
     items: [
       { to: '/alerts', label: 'Alerts', icon: BellIcon, match: (p) => p.startsWith('/alerts') },
       { to: '/executions', label: 'Execution History', icon: PulseIcon, match: (p) => p.startsWith('/executions') },
@@ -73,7 +73,7 @@ const NAV_SEGMENTS: RoleSegment[] = [
   },
   {
     key: 'config',
-    label: 'Rule Developers',
+    label: 'Build',
     items: [
       { to: '/pipelines', label: 'Rules', icon: FlowIcon, match: (p) => p.startsWith('/pipelines') },
       { to: '/subscriptions', label: 'Subscriptions', icon: FilterIcon, match: (p) => p.startsWith('/subscriptions') },
@@ -91,15 +91,15 @@ function ChevronDown({ size = 12 }: { size?: number }) {
 
 const SEGMENT_ARIA: Record<RoleKey, string> = {
   common: 'Common navigation',
-  alert: 'Alert responders navigation',
-  config: 'Rule developers navigation',
+  alert: 'Monitor navigation',
+  config: 'Build navigation',
 }
 
 /**
  * Shared top navigation. Replicates the demos' <header class="topbar"> but
  * reorganises the role tabs into visually-separated role segments so the
- * platform's two user types (alert responders vs pipeline developers) have
- * a clear workspace boundary. Adds a /demo entry as well.
+ * platform's two user types (Monitor vs Build) have a clear workspace
+ * boundary. Adds a /demo entry as well.
  *
  * Variations across pages are handled via props:
  * - `showNamespace`: render the namespace switcher (default true)

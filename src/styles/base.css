@@ -105,15 +105,14 @@
 }
 
 /* Segmented role navigation
- * Two visually separated role segments (告警处理者 vs 规则 开发维护者)
- * flank a small "公共" segment, so the platform's two user types have a
+ * Two visually separated role segments (Monitor vs Build)
+ * flank a small "Common" segment, so the platform's two user types have a
  * clear workspace boundary. Each segment carries a colored accent bar and
  * its own active-state color, matching the role's semantic hue. */
 .role-nav {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
 }
 .role-nav-group {
   display: inline-flex;
@@ -153,7 +152,7 @@
   white-space: nowrap;
 }
 .role-tab {
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 500;
@@ -494,6 +493,11 @@
   color: var(--severity-info);
 }
 
+/* Medium screens: hide segment labels to prevent nav wrapping */
+@media (max-width: 1080px) {
+  .role-segment-label { display: none; }
+}
+
 @media (max-width: 768px) {
   .topbar-inner {
     padding: 12px var(--space-md);
@@ -502,8 +506,6 @@
   .page {
     padding: var(--space-md);
   }
-  /* On small screens, drop the role labels but keep the colored accent bar + icons */
-  .role-segment-label { display: none; }
   .role-tab { padding: 6px 8px; }
   .role-tab span { display: none; }
   .role-divider { margin: 0 4px; }
