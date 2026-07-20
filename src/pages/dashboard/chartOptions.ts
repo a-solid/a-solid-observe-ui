@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts'
-import { hours, trend, throughput } from './mock'
+import type { TimeseriesPointDto, ExecutionTimeseriesPointDto } from '../../api/types'
 
 const tooltipBase = {
   backgroundColor: 'rgba(255,255,255,0.92)',
@@ -9,16 +9,30 @@ const tooltipBase = {
   extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 8px 20px rgba(15,23,42,0.10); border-radius: 10px;',
 }
 
-// ── Trend & throughput are still mock (no timeseries API integration yet) ──
+// ── Dynamic alert trend (from timeseries API) ──
 
-export function buildTrendOption(t = trend): EChartsOption {
+export function buildTrendOption(points: TimeseriesPointDto[]): EChartsOption {
+  // Group by severity and build hour labels
+  const buckets = new Map<string, { CRITICAL: number; WARNING: number; INFO: number }>()
+  points.forEach((p) => {
+    const hour = p.bucketStart?.substring(11, 16) ?? '--:--'
+    if (!buckets.has(hour)) buckets.set(hour, { CRITICAL: 0, WARNING: 0, INFO: 0 })
+    const entry = buckets.get(hour)!
+    const sev = p.severity as keyof typeof entry
+    if (sev && sev in entry) entry[sev] = (entry[sev] ?? 0) + p.count
+  })
+
+  const sorted = [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b))
+  const labels = sorted.map(([h]) => h)
+  const critical = sorted.map(([, v]) => v.CRITICAL)
+  const warning = sorted.map(([, v]) => v.WARNING)
+  const info = sorted.map(([, v]) => v.INFO)
+
   return {
     grid: { left: 36, right: 16, top: 12, bottom: 28 },
     tooltip: { trigger: 'axis', ...tooltipBase },
     xAxis: {
-      type: 'category',
-      data: hours,
-      boundaryGap: false,
+      type: 'category', data: labels, boundaryGap: false,
       axisLine: { lineStyle: { color: '#DBEAFE' } },
       axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10, interval: 2 },
     },
@@ -28,50 +42,44 @@ export function buildTrendOption(t = trend): EChartsOption {
       axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10 },
     },
     series: [
-      {
-        name: 'CRITICAL', type: 'line', stack: 'a', smooth: true, symbol: 'none',
-        data: t.CRITICAL,
-        lineStyle: { color: '#DC2626', width: 2 },
-        areaStyle: {
-          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
-            { offset: 0, color: 'rgba(220,38,38,0.34)' },
-            { offset: 1, color: 'rgba(220,38,38,0.04)' },
-          ] },
-        },
-      },
-      {
-        name: 'WARNING', type: 'line', stack: 'a', smooth: true, symbol: 'none',
-        data: t.WARNING,
-        lineStyle: { color: '#D97706', width: 2 },
-        areaStyle: {
-          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
-            { offset: 0, color: 'rgba(217,119,6,0.34)' },
-            { offset: 1, color: 'rgba(217,119,6,0.04)' },
-          ] },
-        },
-      },
-      {
-        name: 'INFO', type: 'line', stack: 'a', smooth: true, symbol: 'none',
-        data: t.INFO,
-        lineStyle: { color: '#0EA5E9', width: 2 },
-        areaStyle: {
-          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
-            { offset: 0, color: 'rgba(14,165,233,0.34)' },
-            { offset: 1, color: 'rgba(14,165,233,0.04)' },
-          ] },
-        },
-      },
+      sevSeries('CRITICAL', critical, '#DC2626', [0.34, 0.04]),
+      sevSeries('WARNING', warning, '#D97706', [0.34, 0.04]),
+      sevSeries('INFO', info, '#0EA5E9', [0.34, 0.04]),
     ],
   }
 }
 
-export function buildThroughputOption(): EChartsOption {
+function sevSeries(name: string, data: number[], color: string, [hi, lo]: [number, number]) {
+  return {
+    name, type: 'line' as const, stack: 'a', smooth: true, symbol: 'none' as const, data,
+    lineStyle: { color, width: 2 },
+    areaStyle: {
+      color: { type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [{ offset: 0, color: color + Math.round(hi * 255).toString(16).padStart(2, '0') }, { offset: 1, color: color + Math.round(lo * 255).toString(16).padStart(2, '0') }] },
+    },
+  }
+}
+
+// ── Dynamic execution throughput (from timeseries API) ──
+
+export function buildThroughputOption(points: ExecutionTimeseriesPointDto[]): EChartsOption {
+  const buckets = new Map<string, { SUCCESS: number; FAILED: number }>()
+  points.forEach((p) => {
+    const hour = p.bucketStart?.substring(11, 16) ?? '--:--'
+    if (!buckets.has(hour)) buckets.set(hour, { SUCCESS: 0, FAILED: 0 })
+    const entry = buckets.get(hour)!
+    if (p.status === 'SUCCESS') entry.SUCCESS = (entry.SUCCESS ?? 0) + p.count
+    else if (p.status === 'FAILED') entry.FAILED = (entry.FAILED ?? 0) + p.count
+  })
+
+  const sorted = [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b))
+  const labels = sorted.map(([h]) => h)
+
   return {
     grid: { left: 36, right: 16, top: 12, bottom: 28 },
     tooltip: { trigger: 'axis', ...tooltipBase },
     xAxis: {
-      type: 'category',
-      data: hours,
+      type: 'category', data: labels,
       axisLine: { lineStyle: { color: '#DBEAFE' } },
       axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10, interval: 2 },
     },
@@ -83,12 +91,12 @@ export function buildThroughputOption(): EChartsOption {
     series: [
       {
         name: 'SUCCESS', type: 'bar', stack: 't', barWidth: 10, roundCap: true,
-        data: throughput.success,
+        data: sorted.map(([, v]) => v.SUCCESS),
         itemStyle: { color: '#16A34A', borderRadius: [3, 3, 0, 0] },
       },
       {
         name: 'FAILED', type: 'bar', stack: 't', barWidth: 10,
-        data: throughput.failed,
+        data: sorted.map(([, v]) => v.FAILED),
         itemStyle: { color: '#DC2626', borderRadius: [3, 3, 0, 0] },
       },
     ],
@@ -97,7 +105,7 @@ export function buildThroughputOption(): EChartsOption {
   }
 }
 
-// ── Dynamic charts (fed from API) ──
+// ── Dynamic severity pie chart ──
 
 export function buildSeverityOption(alertsBySeverity: Record<string, number>): EChartsOption {
   const total = Object.values(alertsBySeverity).reduce((a, b) => a + b, 0)
@@ -114,24 +122,20 @@ export function buildSeverityOption(alertsBySeverity: Record<string, number>): E
       itemWidth: 10, itemHeight: 10,
     },
     series: [{
-      type: 'pie',
-      radius: ['52%', '74%'],
-      center: ['50%', '46%'],
-      avoidLabelOverlap: true,
+      type: 'pie', radius: ['52%', '74%'], center: ['50%', '46%'], avoidLabelOverlap: true,
       itemStyle: { borderColor: '#fff', borderWidth: 3 },
       label: {
         show: true, position: 'center',
-        formatter: `{c|${total}}\n{a|Today's Alerts}`,
-        rich: {
-          c: { fontSize: 28, fontWeight: 700, color: '#0F172A', fontFamily: 'Fira Code', lineHeight: 32 },
-          a: { fontSize: 11, color: '#64748B', fontFamily: 'Fira Sans' },
-        },
+        formatter: `{c|${total}}\n{a|Alerts}`,
+        rich: { c: { fontSize: 28, fontWeight: 700, color: '#0F172A', fontFamily: 'Fira Code', lineHeight: 32 }, a: { fontSize: 11, color: '#64748B', fontFamily: 'Fira Sans' } },
       },
       emphasis: { label: { show: true } },
       data,
     }],
   }
 }
+
+// ── Dynamic team bar chart ──
 
 export function buildTeamOption(teamDist: { dimension: string; count: number }[]): EChartsOption {
   const sorted = [...teamDist].sort((a, b) => a.count - b.count)
@@ -144,15 +148,12 @@ export function buildTeamOption(teamDist: { dimension: string; count: number }[]
       axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 10 },
     },
     yAxis: {
-      type: 'category',
-      data: sorted.map((t) => t.dimension),
+      type: 'category', data: sorted.map((t) => t.dimension),
       axisLine: { lineStyle: { color: '#DBEAFE' } },
       axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 11 },
     },
     series: [{
-      type: 'bar',
-      barWidth: 14,
-      data: sorted.map((t) => t.count),
+      type: 'bar', barWidth: 14, data: sorted.map((t) => t.count),
       itemStyle: {
         borderRadius: [0, 4, 4, 0],
         color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#1E40AF' }, { offset: 1, color: '#3B82F6' }] },
@@ -163,6 +164,8 @@ export function buildTeamOption(teamDist: { dimension: string; count: number }[]
     animationEasing: 'cubicOut',
   }
 }
+
+// ── Sparkline (used in KPI cards, derived from timeseries) ──
 
 export function buildSparkOption(data: number[], color: string): EChartsOption {
   return {
@@ -179,4 +182,7 @@ export function buildSparkOption(data: number[], color: string): EChartsOption {
   }
 }
 
-export { trend }
+// Extract a flat count array from timeseries points (for KPI sparklines)
+export function toSparkData(points: { count: number }[]): number[] {
+  return points.map((p) => p.count)
+}

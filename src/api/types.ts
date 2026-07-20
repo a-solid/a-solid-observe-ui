@@ -266,4 +266,11 @@ export interface PipelineCountDto {
 export interface TimeseriesPointDto {
   bucketStart: string
   count: number
+  severity?: string
+}
+
+export interface ExecutionTimeseriesPointDto {
+  bucketStart: string
+  count: number
+  status: string
 }
