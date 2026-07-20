@@ -16,7 +16,7 @@ export interface AlertListParams {
 export const alertApi = {
   list(params: AlertListParams) {
     const qs = new URLSearchParams()
-    qs.set('arg0', params.namespace)
+    qs.set('namespace', params.namespace)
     if (params.status) qs.set('status', params.status)
     if (params.severity) qs.set('severity', params.severity)
     if (params.team) qs.set('team', params.team)
@@ -32,25 +32,25 @@ export const alertApi = {
 
   get(namespace: string, id: number | string) {
     return client
-      .get<AlertDto>(`/api/v1/alerts/${id}?arg1=${namespace}`)
+      .get<AlertDto>(`/api/v1/alerts/${id}?namespace=${namespace}`)
       .then((r) => r.data)
   },
 
   getEvidence(namespace: string, alertId: number | string) {
     return client
-      .get<EvidenceDto[]>(`/api/v1/alerts/${alertId}/evidence?arg1=${namespace}`)
+      .get<EvidenceDto[]>(`/api/v1/alerts/${alertId}/evidence?namespace=${namespace}`)
       .then((r) => r.data)
   },
 
   ack(namespace: string, id: number | string, req: DispositionRequest) {
     return client
-      .post<AlertDto>(`/api/v1/alerts/${id}/ack?arg1=${namespace}`, req)
+      .post<AlertDto>(`/api/v1/alerts/${id}/ack?namespace=${namespace}`, req)
       .then((r) => r.data)
   },
 
   ignore(namespace: string, id: number | string, req: DispositionRequest) {
     return client
-      .post<AlertDto>(`/api/v1/alerts/${id}/ignore?arg1=${namespace}`, req)
+      .post<AlertDto>(`/api/v1/alerts/${id}/ignore?namespace=${namespace}`, req)
       .then((r) => r.data)
   },
 }

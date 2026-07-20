@@ -15,7 +15,7 @@ export interface ExecutionListParams {
 export const executionApi = {
   list(params: ExecutionListParams) {
     const qs = new URLSearchParams()
-    qs.set('arg0', params.namespace)
+    qs.set('namespace', params.namespace)
     if (params.pipeline_id != null) qs.set('pipeline_id', String(params.pipeline_id))
     if (params.status) qs.set('status', params.status)
     if (params.error_type) qs.set('error_type', params.error_type)
@@ -30,7 +30,7 @@ export const executionApi = {
 
   get(namespace: string, id: number | string) {
     return client
-      .get<ExecutionDto>(`/api/v1/executions/${id}?arg1=${namespace}`)
+      .get<ExecutionDto>(`/api/v1/executions/${id}?namespace=${namespace}`)
       .then((r) => r.data)
   },
 }
