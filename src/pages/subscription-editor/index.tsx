@@ -102,8 +102,9 @@ function SubscriptionEditor() {
   const { id } = useParams<{ id: string }>()
   const { namespace } = useNamespace()
   const subscriptionName = id ?? ''
+  const isNew = subscriptionName === 'new'
 
-  const { data: existing } = useSubscription(namespace, subscriptionName)
+  const { data: existing } = useSubscription(namespace, isNew ? '' : subscriptionName)
   const { data: pipelines = [] } = usePipelines(namespace)
   const createMutation = useCreateSubscription(namespace)
   const updateMutation = useUpdateSubscription(namespace)
@@ -114,6 +115,7 @@ function SubscriptionEditor() {
   const [ops, setOps] = useState<Record<string, boolean>>({ INSERT: true, UPDATE: true, DELETE: false })
   const [db, setDb] = useState('')
   const [table, setTable] = useState('')
+  const [subNameInput, setSubNameInput] = useState('')
   const [cronExpression, setCronExpression] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -163,7 +165,7 @@ function SubscriptionEditor() {
     actionType: action,
     ...(source === 'cdc' ? { db, table, opTypes: (Object.entries(ops).filter(([, v]) => v).map(([k]) => k) as ('INSERT' | 'UPDATE' | 'DELETE')[]) } : {}),
     ...(source === 'cron' ? { cronExpression } : {}),
-    name: subscriptionName,
+    name: isNew ? (subNameInput || 'untitled-subscription') : subscriptionName,
   })
 
   const handleSave = async () => {
@@ -174,8 +176,11 @@ function SubscriptionEditor() {
         await updateMutation.mutateAsync({ name: subscriptionName, subscription: fields })
         toast.success('Subscription updated')
       } else {
-        await createMutation.mutateAsync({ subscription: fields })
+        const created = await createMutation.mutateAsync({ subscription: fields })
         toast.success('Subscription created')
+        if (isNew && created.name) {
+          window.location.href = `/subscriptions/${created.name}/edit`
+        }
       }
     } catch {
       // error toasted by interceptor
@@ -205,7 +210,7 @@ function SubscriptionEditor() {
             </button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving...' : isNew ? 'Create' : 'Save'}
             </button>
           </div>
         </div>
@@ -215,7 +220,21 @@ function SubscriptionEditor() {
         <div className="editor-title-block">
           <div>
             <h1 className="editor-title">
-              {subscriptionName || 'New Subscription'}
+              {isNew ? (
+                <input
+                  className="editor-name-input"
+                  value={subNameInput}
+                  onChange={(e) => setSubNameInput(e.target.value)}
+                  placeholder="subscription-name"
+                  style={{
+                    fontSize: 18, fontWeight: 600, background: 'transparent', border: '1px dashed var(--color-border)',
+                    borderRadius: 6, padding: '4px 8px', color: 'var(--color-text)', fontFamily: 'inherit',
+                    width: 280,
+                  }}
+                />
+              ) : (
+                subscriptionName
+              )}
               <span className="draft-pill">DRAFT</span>
             </h1>
             <p className="editor-subtitle">Configure Source event subscription, forking to one or more Rules for processing.</p>

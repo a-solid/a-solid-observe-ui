@@ -1,0 +1,2542 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "a-solid-observe API",
+        "description": "Department-wide observation platform: CDC/cron/API triggers, Groovy rules, alerting via Grafana/AlertManager.",
+        "contact": {
+            "name": "IMS",
+            "email": "ims@example.com"
+        },
+        "license": {
+            "name": "Proprietary",
+            "url": "https://example.com/license"
+        },
+        "version": "0.1.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Generated server url"
+        }
+    ],
+    "paths": {
+        "/api/v1/namespaces/{name}": {
+            "get": {
+                "tags": [
+                    "namespace-controller"
+                ],
+                "operationId": "get",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseNamespaceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "namespace-controller"
+                ],
+                "operationId": "update",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateNamespaceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseNamespaceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "namespace-controller"
+                ],
+                "operationId": "delete",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVoid"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/subscriptions/{name}": {
+            "get": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "get_1",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSubscriptionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "update_1",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSubscriptionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSubscriptionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "delete_1",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVoid"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines/{name}": {
+            "get": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "get_2",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePipelineDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "update_2",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePipelineRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePipelineDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/validate/pipeline": {
+            "post": {
+                "tags": [
+                    "validate-controller"
+                ],
+                "operationId": "validatePipeline",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ValidatePipelineRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseValidationResultDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/validate/dry-run": {
+            "post": {
+                "tags": [
+                    "validate-controller"
+                ],
+                "operationId": "dryRun",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DryRunRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseDryRunResultDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces": {
+            "get": {
+                "tags": [
+                    "namespace-controller"
+                ],
+                "operationId": "list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListNamespaceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "namespace-controller"
+                ],
+                "operationId": "create",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateNamespaceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseNamespaceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/subscriptions": {
+            "get": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "list_1",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListSubscriptionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "create_1",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSubscriptionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSubscriptionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/subscriptions/{name}/deactivate": {
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "deactivate",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSubscriptionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/subscriptions/{name}/activate": {
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "activate",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSubscriptionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines": {
+            "get": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "list_2",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListPipelineDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "create_2",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePipelineRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePipelineDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines/{name}/versions": {
+            "get": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "versions",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListVersionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "saveVersion",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveVersionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVersionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines/{name}/versions/{v}/publish": {
+            "post": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "publish",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PublishRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVersionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines/{name}/versions/{v}/archive": {
+            "post": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "archiveVersion",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVersionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines/{name}/inject": {
+            "post": {
+                "tags": [
+                    "inject-controller"
+                ],
+                "operationId": "inject",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InjectRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseInjectResultDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/namespaces/{namespace}/pipelines/{name}/archive": {
+            "post": {
+                "tags": [
+                    "pipeline-controller"
+                ],
+                "operationId": "archive",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVoid"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/events/api/{namespace}/{name}": {
+            "post": {
+                "tags": [
+                    "event-controller"
+                ],
+                "operationId": "submit",
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubmitEventRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSubmitEventResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts/{id}/ignore": {
+            "post": {
+                "tags": [
+                    "alert-controller"
+                ],
+                "operationId": "ignore",
+                "parameters": [
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DispositionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseAlertDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts/{id}/ack": {
+            "post": {
+                "tags": [
+                    "alert-controller"
+                ],
+                "operationId": "acknowledge",
+                "parameters": [
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DispositionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseAlertDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-silences": {
+            "get": {
+                "tags": [
+                    "alert-silence-controller"
+                ],
+                "operationId": "list_3",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListSilenceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "alert-silence-controller"
+                ],
+                "operationId": "create_3",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSilenceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSilenceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/executions": {
+            "get": {
+                "tags": [
+                    "stats-controller"
+                ],
+                "operationId": "executionStats",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "arg2",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "pipeline_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    {
+                        "name": "trigger_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseExecutionStatsDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/dashboard": {
+            "get": {
+                "tags": [
+                    "stats-controller"
+                ],
+                "operationId": "dashboard",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 5
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseDashboardStatsDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/alerts": {
+            "get": {
+                "tags": [
+                    "stats-controller"
+                ],
+                "operationId": "alertStats",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "arg2",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "severity",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "team",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "pipeline_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseAlertStatsDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/alerts/timeseries": {
+            "get": {
+                "tags": [
+                    "stats-controller"
+                ],
+                "operationId": "alertTimeseries",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "arg2",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "bucket",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "1h"
+                        }
+                    },
+                    {
+                        "name": "severity",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListTimeseriesPointDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/executions": {
+            "get": {
+                "tags": [
+                    "execution-controller"
+                ],
+                "operationId": "executions",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "pipeline_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "error_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PageResponseExecutionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/executions/{id}": {
+            "get": {
+                "tags": [
+                    "execution-controller"
+                ],
+                "operationId": "execution",
+                "parameters": [
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseExecutionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts": {
+            "get": {
+                "tags": [
+                    "alert-controller"
+                ],
+                "operationId": "listAlerts",
+                "parameters": [
+                    {
+                        "name": "arg0",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "team",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "pipeline_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    {
+                        "name": "severity",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PageResponseAlertDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts/{id}": {
+            "get": {
+                "tags": [
+                    "alert-controller"
+                ],
+                "operationId": "getAlert",
+                "parameters": [
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseAlertDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts/{id}/evidence": {
+            "get": {
+                "tags": [
+                    "alert-controller"
+                ],
+                "operationId": "getEvidence",
+                "parameters": [
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListEvidenceDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-silences/{id}": {
+            "delete": {
+                "tags": [
+                    "alert-silence-controller"
+                ],
+                "operationId": "delete_2",
+                "parameters": [
+                    {
+                        "name": "arg1",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseVoid"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "UpdateNamespaceRequest": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ApiResponseNamespaceDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/NamespaceDto"
+                    }
+                }
+            },
+            "NamespaceDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Condition": {
+                "type": "object"
+            },
+            "SubscriptionFields": {
+                "type": "object",
+                "properties": {
+                    "pipelineIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "db": {
+                        "type": "string"
+                    },
+                    "table": {
+                        "type": "string"
+                    },
+                    "opTypes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "INSERT",
+                                "UPDATE",
+                                "DELETE"
+                            ]
+                        },
+                        "uniqueItems": true
+                    },
+                    "sourceType": {
+                        "type": "string",
+                        "enum": [
+                            "CDC",
+                            "CRON",
+                            "API",
+                            "UNKNOWN"
+                        ]
+                    },
+                    "fieldFilter": {
+                        "$ref": "#/components/schemas/Condition"
+                    },
+                    "actionType": {
+                        "type": "string"
+                    },
+                    "scheduleDelayMs": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "scheduleCorrelationKeyPath": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "cronExpression": {
+                        "type": "string"
+                    },
+                    "concurrent": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "pipelineIds"
+                ]
+            },
+            "UpdateSubscriptionRequest": {
+                "type": "object",
+                "properties": {
+                    "subscription": {
+                        "$ref": "#/components/schemas/SubscriptionFields"
+                    }
+                },
+                "required": [
+                    "subscription"
+                ]
+            },
+            "ApiResponseSubscriptionDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/SubscriptionDto"
+                    }
+                }
+            },
+            "SubscriptionDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "pipelineIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "db": {
+                        "type": "string"
+                    },
+                    "table": {
+                        "type": "string"
+                    },
+                    "opTypes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "INSERT",
+                                "UPDATE",
+                                "DELETE"
+                            ]
+                        },
+                        "uniqueItems": true
+                    },
+                    "sourceType": {
+                        "type": "string",
+                        "enum": [
+                            "CDC",
+                            "CRON",
+                            "API",
+                            "UNKNOWN"
+                        ]
+                    },
+                    "fieldFilter": {
+                        "$ref": "#/components/schemas/Condition"
+                    },
+                    "actionType": {
+                        "type": "string"
+                    },
+                    "scheduleDelayMs": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "scheduleCorrelationKeyPath": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "cronExpression": {
+                        "type": "string"
+                    },
+                    "concurrent": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CreatePipelineRequest": {
+                "type": "object",
+                "properties": {
+                    "labels": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "createdBy": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "ApiResponsePipelineDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/PipelineDto"
+                    }
+                }
+            },
+            "PipelineDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "labels": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "currentVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "createdBy": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ValidatePipelineRequest": {
+                "type": "object",
+                "properties": {
+                    "pipelineJson": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "pipelineJson"
+                ]
+            },
+            "ApiResponseValidationResultDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ValidationResultDto"
+                    }
+                }
+            },
+            "ValidationResultDto": {
+                "type": "object",
+                "properties": {
+                    "ok": {
+                        "type": "boolean"
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "DryRunRequest": {
+                "type": "object",
+                "properties": {
+                    "pipelineJson": {
+                        "type": "string"
+                    },
+                    "eventJson": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "eventJson",
+                    "pipelineJson"
+                ]
+            },
+            "ApiResponseDryRunResultDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/DryRunResultDto"
+                    }
+                }
+            },
+            "DryRunResultDto": {
+                "type": "object",
+                "properties": {
+                    "outcome": {
+                        "type": "string"
+                    },
+                    "alerts": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    }
+                }
+            },
+            "CreateNamespaceRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "CreateSubscriptionRequest": {
+                "type": "object",
+                "properties": {
+                    "subscription": {
+                        "$ref": "#/components/schemas/SubscriptionFields"
+                    }
+                },
+                "required": [
+                    "subscription"
+                ]
+            },
+            "SaveVersionRequest": {
+                "type": "object",
+                "properties": {
+                    "pipelineJson": {
+                        "type": "string"
+                    },
+                    "publishedBy": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "pipelineJson"
+                ]
+            },
+            "ApiResponseVersionDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/VersionDto"
+                    }
+                }
+            },
+            "VersionDto": {
+                "type": "object",
+                "properties": {
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "pipelineId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "definitionHash": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "publishedBy": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "PublishRequest": {
+                "type": "object",
+                "properties": {
+                    "publishedBy": {
+                        "type": "string"
+                    }
+                }
+            },
+            "InjectRequest": {
+                "type": "object",
+                "properties": {
+                    "eventJson": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "eventJson"
+                ]
+            },
+            "ApiResponseInjectResultDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/InjectResultDto"
+                    }
+                }
+            },
+            "InjectResultDto": {
+                "type": "object",
+                "properties": {
+                    "outcome": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ApiResponseVoid": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object"
+                    }
+                }
+            },
+            "SubmitEventRequest": {
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "ApiResponseSubmitEventResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/SubmitEventResponse"
+                    }
+                }
+            },
+            "SubmitEventResponse": {
+                "type": "object",
+                "properties": {
+                    "eventId": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DispositionRequest": {
+                "type": "object",
+                "properties": {
+                    "note": {
+                        "type": "string"
+                    },
+                    "by": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "by"
+                ]
+            },
+            "AlertDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "pipelineId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "pipelineVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "executionId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "fingerprint": {
+                        "type": "string"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "INFO",
+                            "WARNING",
+                            "CRITICAL"
+                        ]
+                    },
+                    "labels": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "annotations": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "lastSeenAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "resolvedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "disposition": {
+                        "type": "string"
+                    },
+                    "dedupCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "ackNote": {
+                        "type": "string"
+                    },
+                    "ackBy": {
+                        "type": "string"
+                    },
+                    "ackAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "traceId": {
+                        "type": "string"
+                    },
+                    "labelTeam": {
+                        "type": "string"
+                    },
+                    "labelApp": {
+                        "type": "string"
+                    },
+                    "labelLine": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ApiResponseAlertDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/AlertDto"
+                    }
+                }
+            },
+            "CreateSilenceRequest": {
+                "type": "object",
+                "properties": {
+                    "matchType": {
+                        "type": "string"
+                    },
+                    "match": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "createdBy": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "matchType"
+                ]
+            },
+            "ApiResponseSilenceDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/SilenceDto"
+                    }
+                }
+            },
+            "SilenceDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "matchType": {
+                        "type": "string"
+                    },
+                    "match": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "createdBy": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ApiResponseExecutionStatsDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ExecutionStatsDto"
+                    }
+                }
+            },
+            "ExecutionStatsDto": {
+                "type": "object",
+                "properties": {
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "from": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "to": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "byStatus": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "failedCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "successRate": {
+                        "type": "number",
+                        "format": "double"
+                    }
+                }
+            },
+            "ApiResponseDashboardStatsDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/DashboardStatsDto"
+                    }
+                }
+            },
+            "DashboardStatsDto": {
+                "type": "object",
+                "properties": {
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "from": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "to": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "alertsBySeverity": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "alertsByStatus": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "alertsTotal": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "executionsByStatus": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "executionsTotal": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "executionsFailed": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "executionsSuccessRate": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "eventsToday": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "alertsToday": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "teamDist": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DimensionCountDto"
+                        }
+                    },
+                    "topPipelines": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PipelineCountDto"
+                        }
+                    },
+                    "topFingerprints": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DimensionCountDto"
+                        }
+                    }
+                }
+            },
+            "DimensionCountDto": {
+                "type": "object",
+                "properties": {
+                    "dimension": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "PipelineCountDto": {
+                "type": "object",
+                "properties": {
+                    "pipelineId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "pipelineName": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "AlertStatsDto": {
+                "type": "object",
+                "properties": {
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "from": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "to": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "bySeverity": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "byStatus": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "ApiResponseAlertStatsDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/AlertStatsDto"
+                    }
+                }
+            },
+            "ApiResponseListTimeseriesPointDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TimeseriesPointDto"
+                        }
+                    }
+                }
+            },
+            "TimeseriesPointDto": {
+                "type": "object",
+                "properties": {
+                    "bucketStart": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "ApiResponseListNamespaceDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NamespaceDto"
+                        }
+                    }
+                }
+            },
+            "ApiResponseListSubscriptionDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SubscriptionDto"
+                        }
+                    }
+                }
+            },
+            "ApiResponseListPipelineDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PipelineDto"
+                        }
+                    }
+                }
+            },
+            "ApiResponseListVersionDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/VersionDto"
+                        }
+                    }
+                }
+            },
+            "ExecutionDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "pipelineId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "pipelineVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "triggerType": {
+                        "type": "string"
+                    },
+                    "triggerEvent": {
+                        "type": "string"
+                    },
+                    "subscriptionId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "startedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "durationMs": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "traceId": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "executionId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "nodeName": {
+                        "type": "string"
+                    },
+                    "errorType": {
+                        "type": "string"
+                    },
+                    "errorMessage": {
+                        "type": "string"
+                    },
+                    "stackTrace": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Page": {
+                "type": "object",
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "PageResponseExecutionDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExecutionDto"
+                        }
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/Page"
+                    }
+                }
+            },
+            "ApiResponseExecutionDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ExecutionDto"
+                    }
+                }
+            },
+            "PageResponseAlertDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AlertDto"
+                        }
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/Page"
+                    }
+                }
+            },
+            "ApiResponseListEvidenceDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/EvidenceDto"
+                        }
+                    }
+                }
+            },
+            "EvidenceDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "alertId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "pipelineId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "pipelineVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "executionId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "nodeName": {
+                        "type": "string"
+                    },
+                    "triggerEvent": {
+                        "type": "string"
+                    },
+                    "traceId": {
+                        "type": "string"
+                    },
+                    "spanId": {
+                        "type": "string"
+                    },
+                    "capturedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "truncated": {
+                        "type": "boolean"
+                    },
+                    "emitSeq": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "ApiResponseListSilenceDto": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SilenceDto"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

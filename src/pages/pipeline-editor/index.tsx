@@ -10,10 +10,11 @@ import { tags as t } from '@lezer/highlight'
 import { toast } from 'sonner'
 import { JsonView } from '../../components/JsonView'
 import { useNamespace } from '../../context/NamespaceContext'
-import { usePipeline } from '../../hooks/usePipelines'
+import { usePipeline, useCreatePipeline } from '../../hooks/usePipelines'
 import { validateApi } from '../../api/validate'
 import { injectApi } from '../../api/inject'
 import { versionApi } from '../../api/version'
+import { pipelineApi } from '../../api/pipeline'
 import type { ValidationResultDto, DryRunResultDto, InjectResultDto } from '../../api/types'
 import {
   ctxChips,
@@ -158,11 +159,14 @@ function PipelineEditor() {
   const { id } = useParams<{ id: string }>()
   const { namespace } = useNamespace()
   const pipelineName = id ?? ''
+  const isNew = pipelineName === 'new'
 
-  // Fetch pipeline metadata
-  const { data: pipeline } = usePipeline(namespace, pipelineName)
+  // Only fetch existing pipeline; skip for new
+  const { data: pipeline } = usePipeline(namespace, isNew ? '' : pipelineName)
+  const createMutation = useCreatePipeline(namespace)
 
   const [tab, setTab] = useState<'visual' | 'json'>('visual')
+  const [pipelineNameInput, setPipelineNameInput] = useState('')
   const [labels, setLabels] = useState<{ key: string; value: string }[]>(() =>
     pipeline?.labels
       ? Object.entries(pipeline.labels).map(([k, v]) => ({ key: k, value: v }))
@@ -202,9 +206,10 @@ return false   // SHORT_CIRCUITED`)
   const data = dryRunEvents[ev]
 
   // Build pipeline JSON from current editor state
+  const effectiveName = isNew ? (pipelineNameInput || 'untitled') : pipelineName
   const buildPipelineJson = () =>
     JSON.stringify({
-      name: pipelineName,
+      name: effectiveName,
       description: pipeline?.description ?? '',
       labels: Object.fromEntries(labels.filter((l) => l.key).map((l) => [l.key, l.value])),
       nodes: [{ name: 'check', scriptSource: code }],
@@ -262,10 +267,25 @@ return false   // SHORT_CIRCUITED`)
   const handleSaveVersion = async () => {
     setSaving(true)
     try {
-      await versionApi.saveVersion(namespace, pipelineName, {
-        pipelineJson: buildPipelineJson(),
-      })
-      toast.success('Version saved')
+      if (isNew) {
+        // Create the pipeline first, then save a version
+        const name = pipelineNameInput || 'untitled'
+        const created = await createMutation.mutateAsync({
+          name,
+          description: '',
+          labels: Object.fromEntries(labels.filter((l) => l.key).map((l) => [l.key, l.value])),
+        })
+        await versionApi.saveVersion(namespace, created.name, {
+          pipelineJson: buildPipelineJson(),
+        })
+        toast.success('Pipeline created')
+        window.location.href = `/pipelines/${created.name}/edit`
+      } else {
+        await versionApi.saveVersion(namespace, pipelineName, {
+          pipelineJson: buildPipelineJson(),
+        })
+        toast.success('Version saved')
+      }
     } catch {
       // error already toasted
     } finally {
@@ -276,13 +296,30 @@ return false   // SHORT_CIRCUITED`)
   const handlePublish = async () => {
     setPublishing(true)
     try {
-      // Save first, then publish the saved version
-      const saved = await versionApi.saveVersion(namespace, pipelineName, {
-        pipelineJson: buildPipelineJson(),
-      })
-      if (saved.version != null) {
-        await versionApi.publish(namespace, pipelineName, saved.version)
-        toast.success(`Published v${saved.version}`)
+      if (isNew) {
+        // Create first, then publish
+        const name = pipelineNameInput || 'untitled'
+        const created = await createMutation.mutateAsync({
+          name,
+          description: '',
+          labels: Object.fromEntries(labels.filter((l) => l.key).map((l) => [l.key, l.value])),
+        })
+        const saved = await versionApi.saveVersion(namespace, created.name, {
+          pipelineJson: buildPipelineJson(),
+        })
+        if (saved.version != null) {
+          await versionApi.publish(namespace, created.name, saved.version)
+          toast.success(`Published v${saved.version}`)
+        }
+        window.location.href = `/pipelines/${created.name}/edit`
+      } else {
+        const saved = await versionApi.saveVersion(namespace, pipelineName, {
+          pipelineJson: buildPipelineJson(),
+        })
+        if (saved.version != null) {
+          await versionApi.publish(namespace, pipelineName, saved.version)
+          toast.success(`Published v${saved.version}`)
+        }
       }
     } catch {
       // error already toasted
@@ -367,7 +404,21 @@ return false   // SHORT_CIRCUITED`)
 
       <div className="editor-toolbar">
         <div className="editor-toolbar-inner">
-          <span className="editor-name">{pipeline?.name ?? pipelineName}</span>
+          {isNew ? (
+            <input
+              className="editor-name-input"
+              value={pipelineNameInput}
+              onChange={(e) => setPipelineNameInput(e.target.value)}
+              placeholder="pipeline-name"
+              style={{
+                fontSize: 15, fontWeight: 600, background: 'transparent', border: '1px dashed var(--color-border)',
+                borderRadius: 6, padding: '4px 8px', color: 'var(--color-text)', fontFamily: 'inherit',
+                width: 220,
+              }}
+            />
+          ) : (
+            <span className="editor-name">{pipeline?.name ?? pipelineName}</span>
+          )}
           <span className="editor-version">
             <span className="dot" />
             {pipeline?.status === 'PUBLISHED' ? `v${pipeline.currentVersion}` : 'draft'}

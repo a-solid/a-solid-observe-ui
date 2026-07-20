@@ -15,7 +15,7 @@
 
 .page-subtitle .num { color: var(--color-text); font-weight: 500; }
 
-/* === Severity overview === */
+/* === Overview === */
 .severity-overview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
