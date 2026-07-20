@@ -12,10 +12,10 @@ const ICON_ALERT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICON_SCOPE = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /></svg>
 
 const SUBTABS = [
-  { to: '/alerts', label: '告警列表', icon: ALERT_SUBTAB_ICONS.list },
-  { to: '/alerts/a1', label: '告警详情', icon: ALERT_SUBTAB_ICONS.detail },
-  { to: '/executions', label: '执行历史', icon: ALERT_SUBTAB_ICONS.executions },
-  { to: '/executions/failed', label: '失败执行', icon: ALERT_SUBTAB_ICONS.failed },
+  { to: '/alerts', label: 'Alerts', icon: ALERT_SUBTAB_ICONS.list },
+  { to: '/alerts/a1', label: 'Alert Detail', icon: ALERT_SUBTAB_ICONS.detail },
+  { to: '/executions', label: 'Execution History', icon: ALERT_SUBTAB_ICONS.executions },
+  { to: '/executions/failed', label: 'Failed Executions', icon: ALERT_SUBTAB_ICONS.failed },
 ]
 
 function FailCard({ card, selected, onSelect }: { card: FailCardData; selected: boolean; onSelect: () => void }) {
@@ -116,35 +116,35 @@ function DiagPanel({ f }: { f: Failure }) {
   const inputState = (i: number): 'fail' | 'ok' | 'muted' =>
     failIdx === i ? 'fail' : failIdx > i ? 'ok' : 'muted'
   const tagFor = (i: number): string => {
-    if (failIdx === i) return '✗ 崩在这'
+    if (failIdx === i) return '✗ Crashed here'
     if (failIdx < i) {
-      if (i === 1) return '— 未到达'
-      if (i === 2) return failIdx < 2 ? '— 未到达' : '✓ 正常'
-      return '✓ 进入正常'
+      if (i === 1) return '— Not reached'
+      if (i === 2) return failIdx < 2 ? '— Not reached' : '✓ OK'
+      return '✓ Entered OK'
     }
-    return i === 1 ? '✓ 正常处理' : '✓ 正常'
+    return i === 1 ? '✓ Processed OK' : '✓ OK'
   }
 
   return (
     <section className="diag-pane" key={f.id}>
       <div className="diag-head">
         <div className="diag-title-block">
-          <span className="diag-eyebrow">节点诊断 · {f.nodeName}</span>
+          <span className="diag-eyebrow">Node Diagnostics · {f.nodeName}</span>
           <h2 className="diag-title">
             {f.pipeline}
             <span className="diag-error-tag">{ICON_ALERT}{f.errorType}</span>
           </h2>
-          <span className="diag-sub">失败于 <span className="mono">{f.failedAt}</span> · <span className="mono">{f.isoCreatedAt}</span></span>
+          <span className="diag-sub">Failed at <span className="mono">{f.failedAt}</span> · <span className="mono">{f.isoCreatedAt}</span></span>
         </div>
-        <button className="btn-retry" onClick={() => toast.success(`已提交重试 · ${f.pipeline}`)}>
-          {ICON_RETRY}一键重试
+        <button className="btn-retry" onClick={() => toast.success(`Retry submitted · ${f.pipeline}`)}>
+          {ICON_RETRY}One-click Retry
         </button>
       </div>
 
       <div>
         <p className="diag-section-title">
           {ICON_SCOPE}
-          诊断信号 · 输入 → 节点处理 → 输出
+          Diagnostic Signals · Input → Node Processing → Output
         </p>
         <div className="oscilloscope">
           <svg className="osc-svg" viewBox="0 0 850 220" preserveAspectRatio="xMidYMid meet">
@@ -156,13 +156,13 @@ function DiagPanel({ f }: { f: Failure }) {
 
             <OscStage x={60} state={inputState(0)} markerX={125}
               label="INPUT" name="triggerEvent"
-              tag={failIdx === 0 ? '✗ 崩在这' : '✓ 进入正常'} />
+              tag={failIdx === 0 ? '✗ Crashed here' : '✓ Entered OK'} />
             <OscStage x={320} state={inputState(1)} markerX={420}
-              label={failIdx < 1 ? 'NODE · 已跳过' : 'NODE · 处理中'}
+              label={failIdx < 1 ? 'NODE · Skipped' : 'NODE · Processing'}
               name={f.nodeName}
               tag={tagFor(1)} />
             <OscStage x={660} state={inputState(2)} markerX={725}
-              label={failIdx < 2 ? 'OUTPUT · 已跳过' : 'OUTPUT · 发送中'}
+              label={failIdx < 2 ? 'OUTPUT · Skipped' : 'OUTPUT · Sending'}
               name="emit alert"
               tag={tagFor(2)} />
 
@@ -185,7 +185,7 @@ function DiagPanel({ f }: { f: Failure }) {
       <div>
         <p className="diag-section-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-          triggerEvent · 输入快照
+          triggerEvent · Input Snapshot
         </p>
         <div className="oscilloscope" style={{ padding: 14 }}>
           <pre style={{ margin: 0, fontFamily: "'Fira Code',monospace", fontSize: 12, lineHeight: 1.65, color: '#CBD5E1' }}>
@@ -197,7 +197,7 @@ function DiagPanel({ f }: { f: Failure }) {
       <div>
         <button className={`stack-toggle${stackOpen ? ' open' : ''}`} onClick={() => setStackOpen((v) => !v)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
-          展开 stackTrace
+          Expand stackTrace
         </button>
         <div className={`stack-trace${stackOpen ? ' open' : ''}`}>
           {f.stack.map((line, i) => (
@@ -221,11 +221,11 @@ function Failed() {
       <main className="page failed-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">失败执行 · 节点诊断</h1>
+            <h1 className="page-title">Failed Executions · Node Diagnostics</h1>
             <p className="page-subtitle">
-              最近 <span className="num">24h</span> · <span className="num">7</span> 个失败 ·{' '}
+              Last <span className="num">24h</span> · <span className="num">7</span> failures ·{' '}
               <span className="num" style={{ color: 'var(--fail-pending)', fontWeight: 600 }}>4</span> PENDING ·{' '}
-              <span className="num">3</span> 已处理
+              <span className="num">3</span> resolved
             </p>
           </div>
         </div>

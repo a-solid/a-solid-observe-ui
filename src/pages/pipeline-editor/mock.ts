@@ -1,6 +1,6 @@
 /* Pipeline editor mock data — 1:1 from a2-pipeline-editor.html. */
 
-export const groovyScript = `// 高额订单告警 · GroovyScriptEngine 沙箱（5s 超时）
+export const groovyScript = `// High-amount order alert · GroovyScriptEngine sandbox (5s timeout)
 def amount = event.getAt("after.amount") ?: event.getAt("amount")
 def threshold = 10000
 
@@ -9,9 +9,9 @@ if (amount as BigDecimal > threshold) {
     "high-amount-order",            // fingerprint
     "CRITICAL",                     // severity
     [app: "order-service", team: "payment"],
-    [summary: "金额 \${amount} > \${threshold}"]
+    [summary: "amount \${amount} > \${threshold}"]
   )
-  return true   // 命中
+  return true   // matched
 }
 return false   // SHORT_CIRCUITED`
 
@@ -23,11 +23,11 @@ export const initialLabels: { key: string; value: string }[] = [
 ]
 
 export const ctxChips = [
-  { k: 'event', type: 'Event', title: '当前事件，支持 getAt(path) 路径解析' },
+  { k: 'event', type: 'Event', title: 'Current event, supports getAt(path) for path-based access' },
   { k: 'alerts', type: 'AlertsApi', title: 'AlertsApi: emit(fingerprint, severity, labels, annotations)' },
-  { k: 'db', type: 'DbApi', title: 'DbApi: query(sql, args) 只读 SQL 访问' },
-  { k: 'ctx', type: 'ScriptContext', title: 'ctx 共享上下文，跨节点传值' },
-  { k: 'now', type: 'Supplier<Instant>', title: 'now() 当前时间 Supplier' },
+  { k: 'db', type: 'DbApi', title: 'DbApi: query(sql, args) — read-only SQL access' },
+  { k: 'ctx', type: 'ScriptContext', title: 'ctx — shared context, passes values across nodes' },
+  { k: 'now', type: 'Supplier<Instant>', title: 'now() — Supplier of current time' },
 ]
 
 export type DryRunEvent = 'match' | 'miss'
@@ -42,25 +42,26 @@ export const dryRunEvents: Record<DryRunEvent, { event: Record<string, unknown>;
   match: {
     event: { type: 'CDC', after: { amount: 58200, orderId: '20260719-X8742' }, op: 'INSERT', meta: { db: 'commerce', table: 'orders' } },
     steps: [
-      { stage: '输入', cls: '', node: 'input' },
-      { stage: '脚本', cls: 'success', node: 'script' },
-      { stage: '输出', cls: 'alert', node: 'output' },
+      { stage: 'Input', cls: '', node: 'input' },
+      { stage: 'Script', cls: 'success', node: 'script' },
+      { stage: 'Output', cls: 'alert', node: 'output' },
     ],
   },
   miss: {
     event: { type: 'CDC', after: { amount: 890, orderId: '20260719-X8741' }, op: 'INSERT', meta: { db: 'commerce', table: 'orders' } },
     steps: [
-      { stage: '输入', cls: '', node: 'input' },
-      { stage: '脚本', cls: '', node: 'script-miss' },
-      { stage: '输出', cls: '', node: 'output-miss' },
+      { stage: 'Input', cls: '', node: 'input' },
+      { stage: 'Script', cls: '', node: 'script-miss' },
+      { stage: 'Output', cls: '', node: 'output-miss' },
     ],
   },
 }
 
 /**
- * Inject 模块 —— 走生产 runner,真落库(告警 + execution 记录),与 dry-run 的试跑/回滚不同。
- * 后端: POST /api/v1/namespaces/{namespace}/pipelines/{name}/inject
- * Body: { "eventJson": "<带 @type discriminator 的 JSON 字符串>" }
+ * Inject module — goes through the production runner, real DB writes (alerts + execution records),
+ * unlike dry-run (trial run / rollback).
+ * Backend: POST /api/v1/namespaces/{namespace}/pipelines/{name}/inject
+ * Body: { "eventJson": "<JSON string with @type discriminator>" }
  * Response: { "code": 0, "data": { "outcome": "SUCCESS" | "FAILED" } }
  */
 
@@ -80,15 +81,15 @@ export interface InjectTemplate {
   type: InjectEventType
   label: string
   description: string
-  // 完整 eventJson(用户可编辑)。@type 是后端反序列化的 discriminator。
+  // Full eventJson (editable). @type is the backend deserialization discriminator.
   eventJson: string
 }
 
 export const injectTemplates: InjectTemplate[] = [
   {
     type: 'CdcEvent',
-    label: 'CDC · 命中(高额)',
-    description: 'after.amount=58200 > threshold 10000 → 应触发 CRITICAL',
+    label: 'CDC · Match (High Amount)',
+    description: 'after.amount=58200 > threshold 10000 → should trigger CRITICAL',
     eventJson: `{
   "@type": "CdcEvent",
   "op": "INSERT",
@@ -102,7 +103,7 @@ export const injectTemplates: InjectTemplate[] = [
   },
   {
     type: 'CdcEvent',
-    label: 'CDC · 未命中(低额)',
+    label: 'CDC · Miss (Low Amount)',
     description: 'after.amount=890 < threshold → SHORT_CIRCUITED',
     eventJson: `{
   "@type": "CdcEvent",
@@ -117,8 +118,8 @@ export const injectTemplates: InjectTemplate[] = [
   },
   {
     type: 'TickEvent',
-    label: 'Tick · 定时巡检',
-    description: '定时器触发的巡检事件',
+    label: 'Tick · Scheduled Check',
+    description: 'Tick event from scheduled timer',
     eventJson: `{
   "@type": "TickEvent",
   "firedAt": "2026-07-19T14:28:00Z",
@@ -127,8 +128,8 @@ export const injectTemplates: InjectTemplate[] = [
   },
   {
     type: 'ApiEvent',
-    label: 'API · 外部回调',
-    description: '第三方系统回调推送的事件',
+    label: 'API · External Callback',
+    description: 'Callback event from a third-party system',
     eventJson: `{
   "@type": "ApiEvent",
   "source": "payment-gateway",
@@ -142,8 +143,8 @@ export const injectTemplates: InjectTemplate[] = [
   },
   {
     type: 'DelayedEvent',
-    label: 'Delayed · 延迟事件',
-    description: '延迟队列投递的事件',
+    label: 'Delayed · Deferred Event',
+    description: 'Event delivered from a delay queue',
     eventJson: `{
   "@type": "DelayedEvent",
   "originalAt": "2026-07-19T14:00:00Z",
@@ -158,17 +159,17 @@ export type InjectOutcome = 'SUCCESS' | 'FAILED' | 'PIPELINE_NOT_FOUND' | 'BAD_R
 export interface InjectResult {
   outcome: InjectOutcome
   message: string
-  // 模拟返回的关联资源 ID(供前端跳转)
+  // Simulated associated resource IDs (for frontend navigation)
   executionId?: string
   alertFingerprint?: string
   durationMs?: number
 }
 
 /**
- * 模拟 inject 调用。约定:
- * - eventJson 解析失败 / 缺 @type  → BAD_REQUEST
- * - 后端随机概率返回 FAILED(模拟 runner 抛异常)
- * - 否则按 amount 是否 > 10000 推断是否生成告警
+ * Simulated inject call. Conventions:
+ * - eventJson parse failure / missing @type → BAD_REQUEST
+ * - Random probability of FAILED from backend (simulating runner exception)
+ * - Otherwise infer whether alert is generated based on amount > 10000
  */
 export function mockInject(eventJson: string, pipeline: InjectPipelineMeta): Promise<InjectResult> {
   const started = performance.now()
@@ -181,7 +182,7 @@ export function mockInject(eventJson: string, pipeline: InjectPipelineMeta): Pro
       } catch {
         resolve({
           outcome: 'BAD_REQUEST',
-          message: 'eventJson 不是合法 JSON',
+          message: 'eventJson is not valid JSON',
           durationMs: Math.round(performance.now() - started),
         })
         return
@@ -190,37 +191,37 @@ export function mockInject(eventJson: string, pipeline: InjectPipelineMeta): Pro
       if (t !== 'CdcEvent' && t !== 'TickEvent' && t !== 'ApiEvent' && t !== 'DelayedEvent') {
         resolve({
           outcome: 'BAD_REQUEST',
-          message: 'eventJson 必须包含 "@type":"CdcEvent"|"TickEvent"|"ApiEvent"|"DelayedEvent"',
+          message: 'eventJson must contain "@type":"CdcEvent"|"TickEvent"|"ApiEvent"|"DelayedEvent"',
           durationMs: Math.round(performance.now() - started),
         })
         return
       }
-      // 5% 概率模拟 pipeline 未加载
+      // 5% chance: simulate pipeline not loaded
       if (Math.random() < 0.05) {
         resolve({
           outcome: 'PIPELINE_NOT_FOUND',
-          message: `pipeline ${pipeline.namespace}/${pipeline.name} 未在 registry 加载(未发布或未热加载)`,
+          message: `pipeline ${pipeline.namespace}/${pipeline.name} not loaded in registry (not published or not hot-reloaded)`,
           durationMs: Math.round(performance.now() - started),
         })
         return
       }
-      // 10% 概率模拟 runner 抛异常
+      // 10% chance: simulate runner exception
       if (Math.random() < 0.10) {
         resolve({
           outcome: 'FAILED',
-          message: 'runner 抛出 RuntimeException(模拟)',
+          message: 'Runner threw RuntimeException (simulated)',
           durationMs: Math.round(performance.now() - started),
         })
         return
       }
-      // 成功:推断告警是否生成(仅 CdcEvent with amount 才能命中)
+      // Success: infer whether alert was generated (only CdcEvent with amount can match)
       const after = parsed['after'] as { amount?: number } | undefined
       const hit = t === 'CdcEvent' && typeof after?.amount === 'number' && after.amount > 10000
       resolve({
         outcome: 'SUCCESS',
         message: hit
-          ? 'pipeline 执行成功 · 已生成 1 条告警'
-          : 'pipeline 执行成功 · 未命中告警条件(SHORT_CIRCUITED)',
+          ? 'Pipeline executed · 1 alert generated'
+          : 'Pipeline executed · Alert condition not matched (SHORT_CIRCUITED)',
         executionId: 'exec-' + Math.random().toString(36).slice(2, 10),
         alertFingerprint: hit ? 'high-amount-order' : undefined,
         durationMs: Math.round(performance.now() - started),

@@ -105,7 +105,7 @@
 }
 
 /* Segmented role navigation
- * Two visually separated role segments (告警处理者 vs Pipeline 开发维护者)
+ * Two visually separated role segments (告警处理者 vs 规则 开发维护者)
  * flank a small "公共" segment, so the platform's two user types have a
  * clear workspace boundary. Each segment carries a colored accent bar and
  * its own active-state color, matching the role's semantic hue. */

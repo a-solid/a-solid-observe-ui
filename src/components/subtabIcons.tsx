@@ -1,4 +1,4 @@
-/** Shared subtab icons for the b-series (告警) and a-series (配置) pages. */
+/** Shared subtab icons for the b-series (Alerts) and a-series (Config) pages. */
 
 export const ALERT_SUBTAB_ICONS = {
   list: (

@@ -26,7 +26,7 @@ function BindingChip({ b, onRemove }: { b: PipelineBinding; onRemove: () => void
     <span className={`binding-chip${removing ? ' removing' : ''}`} data-id={b.id}>
       <span className="chip-icon">{CHIP_ICON}</span>
       {b.id}
-      <button className="chip-x" onClick={(e) => { e.stopPropagation(); handleRemove() }} aria-label={`移除 ${b.id}`}>
+      <button className="chip-x" onClick={(e) => { e.stopPropagation(); handleRemove() }} aria-label={`Remove ${b.id}`}>
         {X_ICON}
       </button>
     </span>
@@ -48,7 +48,7 @@ function ForkPipeline({ b, index }: { b: PipelineBinding; index: number }) {
         <div className="fp-row-head">
           <span className="fp-name">{b.id}</span>
           <div className="fp-tools">
-            <span className="fp-groovy" title={`Groovy · ${b.groovyLines} 行`}>{GROOVY_ICON}Groovy · {b.groovyLines}</span>
+            <span className="fp-groovy" title={`Groovy · ${b.groovyLines} lines`}>{GROOVY_ICON}Groovy · {b.groovyLines}</span>
             <span className="fp-alert-out">{ALERT_ICON}{b.severity}</span>
           </div>
         </div>
@@ -105,12 +105,12 @@ function SubscriptionEditor() {
   const addBinding = () => {
     const available = pipelinePool.filter((p) => !bindings.find((b) => b.id === p.id))
     if (available.length === 0) {
-      toast('所有 Pipeline 都已绑定')
+      toast('All Rules are already bound')
       return
     }
     const pick = available[0]
     setBindings((prev) => [...prev, pick])
-    toast.success(`已添加 ${pick.id} · 右侧分叉同步`)
+    toast.success(`Added ${pick.id} · Right fork synced`)
   }
 
   const removeBinding = (id: string) => {
@@ -128,21 +128,21 @@ function SubscriptionEditor() {
           <nav className="crumbs">
             <Link to="/subscriptions">Subscriptions</Link>
             <span className="sep">/</span>
-            <span className="current">订单事件中心订阅</span>
+            <span className="current">Order Event Hub Subscription</span>
           </nav>
           <div className="nav-spacer" />
           <div className="toolbar-actions">
-            <button className="btn btn-ghost" onClick={() => toast.success('校验通过 · 3 个 Pipeline 绑定均合法')}>
+            <button className="btn btn-ghost" onClick={() => toast.success('Validation passed · 3 Rule bindings are valid')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
-              校验
+              Validate
             </button>
-            <button className="btn btn-ghost" onClick={() => toast('已重置为初始状态')}>
+            <button className="btn btn-ghost" onClick={() => toast('Reset to initial state')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
-              重置
+              Reset
             </button>
-            <button className="btn btn-primary" onClick={() => toast.success('已保存 · v2')}>
+            <button className="btn btn-primary" onClick={() => toast.success('Saved · v2')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
-              保存
+              Save
             </button>
           </div>
         </div>
@@ -152,47 +152,47 @@ function SubscriptionEditor() {
         <div className="editor-title-block">
           <div>
             <h1 className="editor-title">
-              订单事件中心订阅
+              Order Event Hub Subscription
               <span className="draft-pill">DRAFT · v2</span>
             </h1>
-            <p className="editor-subtitle">配置 Source 事件订阅，分叉到一个或多个 Pipeline 进行处理。</p>
+            <p className="editor-subtitle">Configure Source event subscription, forking to one or more Rules for processing.</p>
           </div>
           <div className="editor-meta">
-            <span className="kv">订阅 ID <strong>sub_order_center_v2</strong></span>
-            <span className="kv">命名空间 <strong>ops</strong></span>
-            <span className="kv">更新时间 <strong>3 分钟前</strong></span>
+            <span className="kv">Subscription ID <strong>sub_order_center_v2</strong></span>
+            <span className="kv">Namespace <strong>ops</strong></span>
+            <span className="kv">Updated <strong>3 min ago</strong></span>
           </div>
         </div>
 
         {/* LEFT: form */}
         <div className="form-col">
-          {/* ① Pipeline 绑定 */}
+          {/* ① Rule bindings */}
           <section className="form-section">
             <div className="section-head">
               <span className="section-num">1</span>
-              <h3 className="section-title">Pipeline 绑定</h3>
-              <span className="section-hint">支持一绑多 · 事件将分叉到所有绑定的 Pipeline</span>
+              <h3 className="section-title">Rule Bindings</h3>
+              <span className="section-hint">Supports one-to-many · Events fork to all bound Rules</span>
             </div>
             <div className="binding-chips">
               {bindings.map((b) => (
                 <BindingChip key={b.id} b={b} onRemove={() => removeBinding(b.id)} />
               ))}
               <button className="add-binding" onClick={addBinding}>
-                {PLUS_ICON}添加 Pipeline
+                {PLUS_ICON}Add Rule
               </button>
             </div>
             <div className="binding-meta">
-              <span>已绑 <span className="binding-count">{bindings.length}</span> 个 Pipeline · 事件将扇出</span>
+              <span>Bound <span className="binding-count">{bindings.length}</span> Rules · Events will fan out</span>
               <span>POST /api/v1/namespaces/ops/subscriptions</span>
             </div>
           </section>
 
-          {/* ② Source 配置 */}
+          {/* ② Source config */}
           <section className="form-section">
             <div className="section-head">
               <span className="section-num">2</span>
-              <h3 className="section-title">源配置</h3>
-              <span className="section-hint">选择事件来源类型并填写连接信息</span>
+              <h3 className="section-title">Source Config</h3>
+              <span className="section-hint">Choose event source type and fill in connection info</span>
             </div>
             <div className="source-tabs">
               {(['cdc', 'cron', 'api'] as const).map((s) => (
@@ -234,12 +234,12 @@ function SubscriptionEditor() {
             </div>
           </section>
 
-          {/* ③ 条件编辑器 */}
+          {/* ③ Condition editor */}
           <section className="form-section">
             <div className="section-head">
               <span className="section-num">3</span>
-              <h3 className="section-title">条件编辑器</h3>
-              <span className="section-hint">fieldFilter · AND/OR 组合 + Compare/In 叶子</span>
+              <h3 className="section-title">Condition Editor</h3>
+              <span className="section-hint">fieldFilter · AND/OR combination + Compare/In leaves</span>
             </div>
             <div className="cond-tree">
               <div className="cond-node">
@@ -249,7 +249,7 @@ function SubscriptionEditor() {
                     <span className="leaf-field">amount</span>
                     <span className="leaf-op">GT</span>
                     <span className="leaf-value">10000</span>
-                    <button className="leaf-remove" aria-label="删除条件">{X_ICON}</button>
+                    <button className="leaf-remove" aria-label="Remove condition">{X_ICON}</button>
                   </div>
                   <div className="cond-container or" data-op="OR">
                     <div className="cond-leaf in">
@@ -257,18 +257,18 @@ function SubscriptionEditor() {
                       <span className="leaf-field">region</span>
                       <span className="leaf-op">IN</span>
                       <span className="leaf-value">[CN, US, EU]</span>
-                      <button className="leaf-remove" aria-label="删除条件">{X_ICON}</button>
+                      <button className="leaf-remove" aria-label="Remove condition">{X_ICON}</button>
                     </div>
                     <div className="cond-leaf compare">
                       <span className="leaf-type">CMP</span>
                       <span className="leaf-field">user.tier</span>
                       <span className="leaf-op">EQ</span>
                       <span className="leaf-value">VIP</span>
-                      <button className="leaf-remove" aria-label="删除条件">{X_ICON}</button>
+                      <button className="leaf-remove" aria-label="Remove condition">{X_ICON}</button>
                     </div>
-                    <button className="cond-add">{PLUS_ICON}叶子</button>
+                    <button className="cond-add">{PLUS_ICON}Leaf</button>
                   </div>
-                  <button className="cond-add">{PLUS_ICON}叶子 / 容器</button>
+                  <button className="cond-add">{PLUS_ICON}Leaf / Container</button>
                 </div>
               </div>
             </div>
@@ -278,24 +278,26 @@ function SubscriptionEditor() {
           <section className="form-section">
             <div className="section-head">
               <span className="section-num">4</span>
-              <h3 className="section-title">动作类型</h3>
-              <span className="section-hint">命中条件时对绑定的 Pipeline 执行的动作</span>
+              <h3 className="section-title">Action Type</h3>
+              <span className="section-hint">Action executed against bound Rules when conditions are matched</span>
             </div>
             <div className="action-types">
               <div className={`action-card run${action === 'RUN' ? ' active' : ''}`} onClick={() => setAction('RUN')}>
                 <div className="ac-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div>
                 <div className="ac-label">RUN</div>
-                <div className="ac-desc">立即触发</div>
+                <div className="ac-desc">Trigger immediately</div>
               </div>
               <div className={`action-card schedule${action === 'SCHEDULE' ? ' active' : ''}`} onClick={() => setAction('SCHEDULE')}>
                 <div className="ac-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></div>
                 <div className="ac-label">SCHEDULE</div>
-                <div className="ac-desc">延时执行</div>
+                <div className="ac-desc">Delayed execution</div>
+                {/* TODO: When SCHEDULE is selected, expand scheduleDelayMs (number) + scheduleCorrelationKeyPath (text) inputs.
+                    Currently the form does not collect these two fields; backend SubscriptionDefinition already supports them, the frontend editor form is pending. */}
               </div>
               <div className={`action-card cancel${action === 'CANCEL' ? ' active' : ''}`} onClick={() => setAction('CANCEL')}>
                 <div className="ac-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="6" width="12" height="12" rx="1" /></svg></div>
                 <div className="ac-label">CANCEL</div>
-                <div className="ac-desc">取消订阅</div>
+                <div className="ac-desc">Cancel subscription</div>
               </div>
             </div>
           </section>
@@ -307,9 +309,9 @@ function SubscriptionEditor() {
             <div className="preview-header">
               <h3 className="preview-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="12" r="2" /><circle cx="6" cy="18" r="2" /><path d="M8 6h4a4 4 0 0 1 4 4v0M8 18h4a4 4 0 0 0 4-4v0" /></svg>
-                分叉链路预览
+                Fork Lineage Preview
               </h3>
-              <span className="preview-live"><span className="dot" />实时</span>
+              <span className="preview-live"><span className="dot" />Live</span>
             </div>
 
             <div className="fork-diagram">
@@ -371,7 +373,7 @@ function SubscriptionEditor() {
 
             <div className="fork-nodes">
               {bindings.length === 0 ? (
-                <div className="fork-empty">未绑定任何 Pipeline · 左侧添加后将在此分叉</div>
+                <div className="fork-empty">No Rule bound · Add one on the left to fork here</div>
               ) : (
                 bindings.map((b, idx) => (
                   <ForkPipeline key={b.id} b={b} index={idx} />
@@ -381,7 +383,7 @@ function SubscriptionEditor() {
 
             <div className="preview-footer">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
-              左侧加 / 减 Pipeline 时，右侧分叉实时同步。
+              When you add / remove Rules on the left, the right fork syncs in real time.
             </div>
           </div>
         </aside>

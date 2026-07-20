@@ -15,18 +15,18 @@ const LABELS = [
 ] as const
 
 const ANNOTATIONS = [
-  ['summary', '订单金额 ¥58,200 超过阈值 ¥10,000'],
-  ['description', '来自 CDC events 的 INSERT 事件，订单 #20260719-X8742 触发高额订单告警，请值班确认是否为正常大额订单。'],
+  ['summary', 'Order amount ¥58,200 exceeds threshold ¥10,000'],
+  ['description', 'INSERT event from CDC events, order #20260719-X8742 triggered high-amount order alert. On-call please verify whether this is a legitimate large order.'],
   ['runbook', 'https://runbooks.internal/a-solid/high-amount-order'],
 ] as const
 
 const TABLE_ROWS = [
-  ['matched', 'true', '节点判定结果', true],
-  ['value', '58200', '事件实际值（amount）', false],
-  ['threshold', '10000', '告警阈值', false],
-  ['operator', 'GT', '比较运算 (>)', false],
-  ['field', 'amount', '判定字段', false],
-  ['evaluatedAt', '2026-07-19T14:32:18Z', '判定时间', false],
+  ['matched', 'true', 'Node evaluation result', true],
+  ['value', '58200', 'Actual event value (amount)', false],
+  ['threshold', '10000', 'Alert threshold', false],
+  ['operator', 'GT', 'Comparison operator (>)', false],
+  ['field', 'amount', 'Evaluated field', false],
+  ['evaluatedAt', '2026-07-19T14:32:18Z', 'Evaluation time', false],
 ] as const
 
 function AlertDetail() {
@@ -47,7 +47,7 @@ function AlertDetail() {
 "field": "amount",
 "evaluatedAt": "2026-07-19T14:32:18Z"`
     navigator.clipboard?.writeText(text).catch(() => {})
-    toast.success('JSON 已复制')
+    toast.success('JSON copied')
   }
 
   return (
@@ -55,7 +55,7 @@ function AlertDetail() {
       <Topbar />
 
       <div className="breadcrumb">
-        <Link to="/alerts">告警列表</Link>
+        <Link to="/alerts">Alerts</Link>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
         <span className="mono">high-amount-order</span>
       </div>
@@ -65,7 +65,7 @@ function AlertDetail() {
         <section className="trace-strip">
           <div className="trace-head">
             <div>
-              <p className="trace-title">溯源链路 · 这条告警从哪来</p>
+              <p className="trace-title">Trace Lineage · Where this alert came from</p>
               <h1 className="trace-headline">
                 <span className="sev-badge-large">CRITICAL</span>
                 <span className="trace-fp">high-amount-order</span>
@@ -74,12 +74,12 @@ function AlertDetail() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--color-text-muted)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
               startsAt <strong style={{ color: 'var(--color-text)', fontFamily: "'Fira Code', monospace", fontWeight: 500 }}>2026-07-19 14:32:18</strong>
-              · 持续 <strong style={{ color: 'var(--severity-critical)', fontFamily: "'Fira Code', monospace", fontWeight: 600 }}>2m 47s</strong>
+              · duration <strong style={{ color: 'var(--severity-critical)', fontFamily: "'Fira Code', monospace", fontWeight: 600 }}>2m 47s</strong>
             </div>
           </div>
 
           <div className="trace-svg-wrap">
-            <TraceSvg activeNode={activeNode} onSelect={(n) => { setActiveNode(n); toast.success(`已选中节点：${n}`) }} />
+            <TraceSvg activeNode={activeNode} onSelect={(n) => { setActiveNode(n); toast.success(`Node selected: ${n}`) }} />
           </div>
         </section>
 
@@ -89,15 +89,15 @@ function AlertDetail() {
             <section className="section-card">
               <h2 className="section-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v8M8 12h8" /><circle cx="12" cy="12" r="10" /></svg>
-                告警元信息
+                Alert Metadata
               </h2>
               <div className="meta-grid">
                 <div className="meta-row"><span className="meta-label">Severity</span><span className="meta-value" style={{ color: 'var(--severity-critical)', fontWeight: 600 }}>CRITICAL ▲</span></div>
-                <div className="meta-row"><span className="meta-label">Status</span><span className="meta-value" style={{ color: 'var(--status-firing)', fontWeight: 600 }}>FIRING</span></div>
+                <div className="meta-row"><span className="meta-label">Status</span><span className="meta-value" style={{ color: 'var(--status-firing)', fontWeight: 600 }}>ACTIVE</span></div>
                 <div className="meta-row"><span className="meta-label">Fingerprint</span><span className="meta-value mono">high-amount-order</span></div>
-                <div className="meta-row"><span className="meta-label">Pipeline</span><span className="meta-value mono">high-amount-order-alert v3</span></div>
+                <div className="meta-row"><span className="meta-label">Rule</span><span className="meta-value mono">high-amount-order-alert v3</span></div>
                 <div className="meta-row"><span className="meta-label">Dedup Count</span><span className="meta-value mono">3</span></div>
-                <div className="meta-row"><span className="meta-label">Team</span><span className="meta-value">支付 · payment</span></div>
+                <div className="meta-row"><span className="meta-label">Team</span><span className="meta-value">Payment · payment</span></div>
               </div>
 
               <div className="labels-block">
@@ -131,19 +131,19 @@ function AlertDetail() {
             <section className="section-card">
               <h2 className="section-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-                Pipeline 节点输出 · evidence
+                Rule Node Output · evidence
               </h2>
               <div className="evidence-toolbar">
                 <div className="view-toggle">
                   <button className={`view-btn${view === 'json' ? ' active' : ''}`} onClick={() => setView('json')}>JSON</button>
                   <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')}>Table</button>
                 </div>
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: "'Fira Code', monospace" }}>check 节点输出</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: "'Fira Code', monospace" }}>check node output</span>
               </div>
 
               {view === 'json' ? (
                 <div className="json-view">
-                  <button className="json-copy" onClick={copyJson}>复制</button>
+                  <button className="json-copy" onClick={copyJson}>Copy</button>
                   <span className="k">"matched"</span>: <span className="b">true</span>,
                   <br />
                   <span className="k">"value"</span>: <span className="n">58200</span>,
@@ -158,7 +158,7 @@ function AlertDetail() {
                 </div>
               ) : (
                 <table className="table-view">
-                  <thead><tr><th>字段</th><th>值</th><th>说明</th></tr></thead>
+                  <thead><tr><th>Field</th><th>Value</th><th>Description</th></tr></thead>
                   <tbody>
                     {TABLE_ROWS.map(([field, val, desc, isOk]) => (
                       <tr key={field}>
@@ -172,7 +172,7 @@ function AlertDetail() {
               )}
 
               <div className="evidence-narrative">
-                Pipeline 在 <strong className="num">2026-07-19 14:32:18</strong> 判定：amount=<strong className="num">58,200</strong> &gt; threshold=<strong className="num">10,000</strong>，<strong>命中告警条件</strong>，触发 CRITICAL。
+                Rule at <strong className="num">2026-07-19 14:32:18</strong> evaluated: amount=<strong className="num">58,200</strong> &gt; threshold=<strong className="num">10,000</strong>, <strong>alert condition matched</strong>, triggered CRITICAL.
               </div>
             </section>
           </div>
@@ -182,33 +182,33 @@ function AlertDetail() {
             <section className="section-card">
               <h2 className="section-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                状态流转时间线
+                Status Transition Timeline
               </h2>
               <div className="timeline">
                 <div className="tl-item start">
                   <div className="tl-time">14:32:18 · startsAt</div>
-                  <div className="tl-title">告警首次触发 <span className="badge" style={{ background: 'rgba(220,38,38,0.12)', color: 'var(--severity-critical)' }}>FIRING</span></div>
-                  <div className="tl-sub">由 Pipeline <span className="mono">high-amount-order-alert v3</span> 产出</div>
+                  <div className="tl-title">Alert first triggered <span className="badge" style={{ background: 'rgba(220,38,38,0.12)', color: 'var(--severity-critical)' }}>ACTIVE</span></div>
+                  <div className="tl-sub">Produced by rule <span className="mono">high-amount-order-alert v3</span></div>
                 </div>
                 <div className="tl-item dedup">
                   <div className="tl-time">14:32:42</div>
                   <div className="tl-title">dedupCount = 2</div>
-                  <div className="tl-sub">同 fingerprint 再触发，去重计数</div>
+                  <div className="tl-sub">Same fingerprint re-triggered, dedup counter incremented</div>
                 </div>
                 <div className="tl-item dedup">
                   <div className="tl-time">14:33:11</div>
                   <div className="tl-title">dedupCount = 3</div>
-                  <div className="tl-sub">第三次触发，仍归并到本告警</div>
+                  <div className="tl-sub">Third trigger, still merged into this alert</div>
                 </div>
                 <div className="tl-item ack">
                   <div className="tl-time">14:34:02 · ack</div>
-                  <div className="tl-title">认领告警 <span className="badge" style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-accent)' }}>ack</span></div>
-                  <div className="tl-sub">由 <strong>alice@a-solid</strong> 认领，备注：「值班跟进，疑似正常大单」</div>
+                  <div className="tl-title">Alert acknowledged <span className="badge" style={{ background: 'rgba(217,119,6,0.12)', color: 'var(--color-accent)' }}>ack</span></div>
+                  <div className="tl-sub">Acknowledged by <strong>alice@a-solid</strong>, note: "On-call follow-up, suspected normal large order"</div>
                 </div>
                 <div className="tl-item resolved" style={{ opacity: 0.6 }}>
-                  <div className="tl-time">— · 等待</div>
-                  <div className="tl-title" style={{ color: 'var(--color-text-muted)' }}>尚未 Resolve</div>
-                  <div className="tl-sub">点击底部 Resolve 触发恢复流程</div>
+                  <div className="tl-time">— · waiting</div>
+                  <div className="tl-title" style={{ color: 'var(--color-text-muted)' }}>Not yet EXPIRED</div>
+                  <div className="tl-sub">No Resolve action yet · System auto-EXPIREDs when alert TTL elapses</div>
                 </div>
               </div>
             </section>
@@ -216,20 +216,20 @@ function AlertDetail() {
             <section className="section-card">
               <h2 className="section-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v8M8 12h8" /><circle cx="12" cy="12" r="10" /></svg>
-                快速操作
+                Quick Actions
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button className="btn btn-warn" style={{ justifyContent: 'flex-start' }} onClick={() => toast.success('已静默 1 小时')}>
+                <button className="btn btn-warn" style={{ justifyContent: 'flex-start' }} onClick={() => toast.success('Silenced for 1 hour')}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 12c0-2-1-3.5-2.5-4.5" /></svg>
-                  静默 1 小时 · silence
+                  Silence 1 hour
                 </button>
                 <Link to="/alerts" className="btn btn-secondary" style={{ justifyContent: 'flex-start', textDecoration: 'none' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-6.4A8.4 8.4 0 1 1 21 11.5z" /></svg>
-                  查看相关告警 · dedup × 3
+                  View Related Alerts · dedup × 3
                 </Link>
                 <Link to="/pipelines" className="btn btn-secondary" style={{ justifyContent: 'flex-start', textDecoration: 'none' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
-                  编辑 Pipeline · 跳转配置
+                  Edit Rule · Jump to Config
                 </Link>
               </div>
             </section>
@@ -244,20 +244,16 @@ function AlertDetail() {
             <span className="sev-pill">CRITICAL</span>
             <div>
               <div className="action-info-fp">high-amount-order</div>
-              <div className="action-info-sub">订单 #20260719-X8742 · 持续 2m 47s · dedup × 3</div>
+              <div className="action-info-sub">Order #20260719-X8742 · duration 2m 47s · dedup × 3</div>
             </div>
           </div>
-          <button className="btn btn-secondary" onClick={() => toast.success('已 Acknowledge · alice@a-solid')}>
+          <button className="btn btn-secondary" onClick={() => toast.success('Acknowledged · alice@a-solid')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
             Acknowledge
           </button>
-          <button className="btn btn-warn" onClick={() => toast.success('已 Silence 1 小时')}>
+          <button className="btn btn-warn" onClick={() => toast.success('Silenced for 1 hour')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z" /></svg>
             Silence 1h
-          </button>
-          <button className="btn btn-primary" onClick={() => toast.success('告警已 Resolve · 进入恢复流程')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l5 5L20 7" /></svg>
-            Resolve
           </button>
         </div>
       </div>
@@ -323,7 +319,7 @@ function TraceSvg({ activeNode, onSelect }: { activeNode: string; onSelect: (n: 
           </g>
         </g>
         <text x="65" y="78" textAnchor="middle" fontFamily="Fira Sans" fontSize="10" fontWeight="600" fill="#64748B" letterSpacing="0.06em">SUBSCRIPTION</text>
-        <text x="65" y="96" textAnchor="middle" fontFamily="Fira Sans" fontSize="13" fontWeight="600" fill="#0F172A">高额订单监控</text>
+        <text x="65" y="96" textAnchor="middle" fontFamily="Fira Sans" fontSize="13" fontWeight="600" fill="#0F172A">High-Amount Monitor</text>
         <text x="65" y="112" textAnchor="middle" fontFamily="Fira Code" fontSize="10" fill="#64748B">amount &gt; 10000</text>
       </g>
 
@@ -340,7 +336,7 @@ function TraceSvg({ activeNode, onSelect }: { activeNode: string; onSelect: (n: 
           </g>
         </g>
         <text x="65" y="78" textAnchor="middle" fontFamily="Fira Sans" fontSize="10" fontWeight="600" fill="#64748B" letterSpacing="0.06em">PIPELINE · v3</text>
-        <text x="65" y="96" textAnchor="middle" fontFamily="Fira Sans" fontSize="13" fontWeight="600" fill="#0F172A">高额订单告警</text>
+        <text x="65" y="96" textAnchor="middle" fontFamily="Fira Sans" fontSize="13" fontWeight="600" fill="#0F172A">High-Amount Alert</text>
         <text x="65" y="112" textAnchor="middle" fontFamily="Fira Code" fontSize="10" fill="#64748B">threshold: 10000</text>
       </g>
 
@@ -354,8 +350,8 @@ function TraceSvg({ activeNode, onSelect }: { activeNode: string; onSelect: (n: 
           <path d="M 0 -10 L 10 8 L -10 8 Z" fill="#DC2626" opacity="0.95" />
           <text x="0" y="5" textAnchor="middle" fontFamily="Fira Sans" fontSize="11" fontWeight="700" fill="#fff">!</text>
         </g>
-        <text x="65" y="78" textAnchor="middle" fontFamily="Fira Sans" fontSize="10" fontWeight="600" fill="#DC2626" letterSpacing="0.06em">ALERT · 本条</text>
-        <text x="65" y="96" textAnchor="middle" fontFamily="Fira Sans" fontSize="13" fontWeight="600" fill="#0F172A">CRITICAL · FIRING</text>
+        <text x="65" y="78" textAnchor="middle" fontFamily="Fira Sans" fontSize="10" fontWeight="600" fill="#DC2626" letterSpacing="0.06em">ALERT · THIS</text>
+        <text x="65" y="96" textAnchor="middle" fontFamily="Fira Sans" fontSize="13" fontWeight="600" fill="#0F172A">CRITICAL · ACTIVE</text>
         <text x="65" y="112" textAnchor="middle" fontFamily="Fira Code" fontSize="10" fill="#64748B">dedup × 3</text>
       </g>
     </svg>

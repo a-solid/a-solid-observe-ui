@@ -34,7 +34,7 @@ function Demo() {
   const [burst, setBurst] = useState<{ cx: number; r: number; opacity: number; stroke: string }>({ cx: 125, r: 0, opacity: 0, stroke: 'var(--color-secondary)' })
   const [alertShow, setAlertShow] = useState(false)
   const [drawer, setDrawer] = useState<NodeKey | null>(null)
-  const [narration, setNarration] = useState<ReactNode>(<>点击 <strong>「▶ 演示模式」</strong> 开始播放</>)
+  const [narration, setNarration] = useState<ReactNode>(<>Click <strong>"▶ Demo Mode"</strong> to start playback</>)
 
   const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const playingRef = useRef(false)
@@ -49,7 +49,7 @@ function Demo() {
     setBurst({ cx: 125, r: 0, opacity: 0, stroke: 'var(--color-secondary)' })
     setAlertShow(false)
     setStep(-1)
-    setNarration(<>点击 <strong>「▶ 演示模式」</strong> 开始播放</>)
+    setNarration(<>Click <strong>"▶ Demo Mode"</strong> to start playback</>)
   }, [])
 
   const wait = useCallback((ms: number) => new Promise<void>((r) => { window.setTimeout(r, reduceMotion ? 0 : ms) }), [reduceMotion])
@@ -98,7 +98,7 @@ function Demo() {
     setStep(1); setNarration(NARRATIONS[1])
     await animateParticle(PATH_START, NODE_X.subscription, 800)
     setRectState((s) => ({ ...s, source: null, subscription: 'active' }))
-    setNarration(<>② 条件过滤 · 2-3 个不满足条件的事件被剔除，主事件通过</>)
+    setNarration(<>② Condition Filter · 2-3 non-matching events filtered out, main event passes through</>)
     // launch ghosts
     if (!reduceMotion) {
       setGhosts([0, 1, 2].map((i) => {
@@ -178,25 +178,25 @@ function Demo() {
             A-Solid Observe
           </div>
           <div className="nav-spacer" />
-          <nav className="role-tabs" aria-label="角色导航">
-            <button className="role-tab" type="button">配置</button>
-            <button className="role-tab" type="button">告警</button>
-            <button className="role-tab active" type="button">大盘</button>
+          <nav className="role-tabs" aria-label="Role navigation">
+            <button className="role-tab" type="button">Config</button>
+            <button className="role-tab" type="button">Alerts</button>
+            <button className="role-tab active" type="button">Dashboard</button>
           </nav>
-          <Link className="nav-link" to="/">← 返回大盘</Link>
+          <Link className="nav-link" to="/">← Back to Dashboard</Link>
         </div>
       </header>
 
       <main className="page demo-page">
         <header className="page-header">
-          <p className="eyebrow">Live Demo · 招牌演示</p>
-          <h1>一个事件，如何变成一条精准告警</h1>
-          <p>下面演示一条订单事件，从 CDC 源注入，经过 Subscription 条件过滤，被 Pipeline 判定命中，最终产出一条 CRITICAL 告警的完整旅程。</p>
+          <p className="eyebrow">Live Demo · Signature Demo</p>
+          <h1>How One Event Becomes a Precise Alert</h1>
+          <p>This demo traces an order event's full journey — injected from a CDC source, filtered by Subscription conditions, matched by a Rule, and ultimately emitted as a CRITICAL alert.</p>
         </header>
 
         <section className="stage">
           <div className="stage-inner">
-            <svg className="pipeline-svg" viewBox="0 0 1000 220" preserveAspectRatio="xMidYMid meet" role="img" aria-label="事件从 Source 流经 Subscription、Pipeline 到 Alert 的可视化管道">
+            <svg className="pipeline-svg" viewBox="0 0 1000 220" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Visual flow of an event from Source through Subscription and Rule to Alert">
               <defs>
                 <linearGradient id="flow-grad-demo" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="#1E40AF" />
@@ -222,7 +222,7 @@ function Demo() {
                 <circle className="node-icon-bg" cx="125" cy="92" r="16" />
                 <g transform="translate(115, 82)"><path className="node-icon" d="M10 3 a7 2.5 0 0 0 0 5 a7 2.5 0 0 0 0 -5 M3 5 v9 a7 2.5 0 0 0 14 0 v-9 M3 9.5 a7 2.5 0 0 0 14 0" /></g>
                 <text className="node-label" x="125" y="128" textAnchor="middle">① Source</text>
-                <text className="node-name" x="125" y="146" textAnchor="middle">CDC · orders 表</text>
+                <text className="node-name" x="125" y="146" textAnchor="middle">CDC · orders table</text>
               </g>
 
               <g className="node-group" style={{ cursor: 'pointer' }} onClick={() => setDrawer('subscription')} onMouseEnter={() => setHighlightNode('subscription')} onMouseLeave={() => setHighlightNode(null)}>
@@ -230,7 +230,7 @@ function Demo() {
                 <circle className="node-icon-bg" cx="375" cy="92" r="16" />
                 <g transform="translate(365, 82)"><path className="node-icon" d="M3 5 h14 M5 10 h10 M7 15 h6" /></g>
                 <text className="node-label" x="375" y="128" textAnchor="middle">② Subscription</text>
-                <text className="node-name" x="375" y="146" textAnchor="middle">高额订单监控</text>
+                <text className="node-name" x="375" y="146" textAnchor="middle">High-Amount Monitor</text>
               </g>
 
               <g className="node-group" style={{ cursor: 'pointer' }} onClick={() => setDrawer('pipeline')} onMouseEnter={() => setHighlightNode('pipeline')} onMouseLeave={() => setHighlightNode(null)}>
@@ -241,7 +241,7 @@ function Demo() {
                   <path className="node-icon" d="M10 2 v3 M10 15 v3 M2 10 h3 M15 10 h3 M4.5 4.5 l2 2 M13.5 13.5 l2 2 M4.5 15.5 l2 -2 M13.5 6.5 l2 -2" />
                 </g>
                 <text className="node-label" x="625" y="128" textAnchor="middle">③ Pipeline</text>
-                <text className="node-name" x="625" y="146" textAnchor="middle">check: 高额订单</text>
+                <text className="node-name" x="625" y="146" textAnchor="middle">check: High-Amount</text>
               </g>
 
               <g className="node-group" style={{ cursor: 'pointer' }} onClick={() => setDrawer('alert')} onMouseEnter={() => setHighlightNode('alert')} onMouseLeave={() => setHighlightNode(null)}>
@@ -253,7 +253,7 @@ function Demo() {
                   <circle className="node-icon alert" cx="10" cy="16" r="0.5" fill="currentColor" />
                 </g>
                 <text className="node-label" x="875" y="128" textAnchor="middle" style={{ fill: 'var(--severity-critical)' }}>④ Alert</text>
-                <text className="node-name" x="875" y="146" textAnchor="middle">触发告警</text>
+                <text className="node-name" x="875" y="146" textAnchor="middle">Trigger Alert</text>
               </g>
 
               <circle className="inject-burst" ref={injectBurst} cx={burst.cx} cy="110" r={burst.r} style={{ opacity: burst.opacity, stroke: burst.stroke, transition: 'r 600ms cubic-bezier(0.22,0.61,0.36,1), opacity 400ms var(--ease)' }} />
@@ -271,14 +271,14 @@ function Demo() {
               <div className="alert-card">
                 <div className="ac-head">
                   <span className="sev-badge">CRITICAL</span>
-                  <p className="ac-title">高额订单告警</p>
+                  <p className="ac-title">High-Amount Order Alert</p>
                 </div>
                 <div className="ac-row"><span className="k">fingerprint</span><span className="v">a1b2c3d4e5f6</span></div>
                 <div className="ac-row"><span className="k">labels.entity</span><span className="v">orders</span></div>
                 <div className="ac-row"><span className="k">team</span><span className="v">payment</span></div>
                 <div className="ac-row"><span className="k">startsAt</span><span className="v">14:28:01</span></div>
                 <div className="ac-annotation">
-                  金额 <strong style={{ color: 'var(--severity-critical)' }}>¥58,200</strong> 超过阈值 ¥10,000
+                  Amount <strong style={{ color: 'var(--severity-critical)' }}>¥58,200</strong> exceeds threshold ¥10,000
                 </div>
               </div>
             </div>
@@ -295,12 +295,12 @@ function Demo() {
           <div className="controls">
             <button className="btn-play" type="button" disabled={playing} onClick={play}>
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-              演示模式
+              Demo Mode
             </button>
             <label className="toggle-loop">
               <input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} />
               <span className="track" />
-              <span>自动循环</span>
+              <span>Auto Loop</span>
             </label>
           </div>
         </section>
@@ -309,7 +309,7 @@ function Demo() {
       {/* Drawer */}
       <div className={`drawer-backdrop${drawer ? ' show' : ''}`} onClick={() => setDrawer(null)} />
       <aside className={`drawer${drawer ? ' show' : ''}`} aria-hidden={!drawer}>
-        <button className="drawer-close" type="button" aria-label="关闭" onClick={() => setDrawer(null)}>
+        <button className="drawer-close" type="button" aria-label="Close" onClick={() => setDrawer(null)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
         {drawer && <DrawerContent node={nodes[drawer]} />}

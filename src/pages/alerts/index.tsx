@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from 
 import { Link } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
 import { useCountUp } from '../../lib/useCountUp'
-import { alerts as initialAlerts, incoming, severityCounts, type Alert, type Severity } from './mock'
+import { alerts as initialAlerts, incoming, severityCounts, type Alert, type AlertStatus, type Severity } from './mock'
 import './alerts.css'
 
 /* Inline icon SVGs (1:1 from b1-alerts.html) */
@@ -36,10 +36,13 @@ const SEV_SHAPE_CLASS: Record<Severity, string> = { CRITICAL: 'crit', WARNING: '
 
 interface Filters {
   sev: 'all' | Severity
-  status: 'all' | 'FIRING' | 'RESOLVED'
+  status: 'all' | 'ACTIVE' | 'EXPIRED'
   team: 'all' | string
   q: string
 }
+
+// CSS class tokens retained (visual styling); 前端枚举值已是 ACTIVE/EXPIRED。
+const STATUS_VISUAL_CLASS: Record<AlertStatus, string> = { ACTIVE: 'firing', EXPIRED: 'resolved' }
 
 function passes(a: Alert, f: Filters): boolean {
   if (f.sev !== 'all' && a.severity !== f.sev) return false
@@ -53,11 +56,11 @@ function passes(a: Alert, f: Filters): boolean {
 }
 
 function AlertCard({ a }: { a: Alert }) {
-  const time = a.status === 'RESOLVED' ? (a.resolvedAt || a.startedAt) : a.startedAt
+  const time = a.status === 'EXPIRED' ? (a.endsAt || a.lastSeenAt || a.startedAt) : a.startedAt
   return (
     <Link
       to={`/alerts/${a.id}`}
-      className={`alert-card ${SEV_CLASS[a.severity]} ${a.status.toLowerCase()}${a.new ? ' new' : ''}`}
+      className={`alert-card ${SEV_CLASS[a.severity]} ${STATUS_VISUAL_CLASS[a.status]}${a.new ? ' new' : ''}`}
     >
       <div className="alert-bar" />
       <div className="alert-sev-icon">
@@ -76,13 +79,19 @@ function AlertCard({ a }: { a: Alert }) {
           {a.dedupCount > 0 && (
             <span className="alert-meta-item dedup">{ICONS.dedup}dedupCount = <span className="num">{a.dedupCount}</span></span>
           )}
-          {a.status === 'RESOLVED' && (
-            <span className="alert-meta-item" style={{ color: '#15803D' }}>✓ resolved</span>
+          {a.status === 'EXPIRED' && (
+            <span className="alert-meta-item" style={{ color: '#15803D' }}>✓ expired</span>
+          )}
+          {a.disposition === 'ACKNOWLEDGED' && (
+            <span className="alert-meta-item" style={{ color: 'var(--color-accent)' }}>ack · {a.ackBy}</span>
+          )}
+          {a.disposition === 'IGNORED' && (
+            <span className="alert-meta-item" style={{ color: 'var(--color-text-muted)' }}>ignored</span>
           )}
         </div>
       </div>
       <div className="alert-right">
-        <span className={`status-badge ${a.status.toLowerCase()}`}>{a.status}</span>
+        <span className={`status-badge ${STATUS_VISUAL_CLASS[a.status]}`}>{a.status}</span>
         <span className="alert-time">startsAt <strong>{a.startedAt}</strong></span>
       </div>
     </Link>
@@ -96,7 +105,7 @@ function Alerts() {
   const filtered = useMemo(() => {
     const rank = (a: Alert) => {
       const sevRank = a.severity === 'CRITICAL' ? 0 : a.severity === 'WARNING' ? 1 : 2
-      const stRank = a.status === 'FIRING' ? 0 : 1
+      const stRank = a.status === 'ACTIVE' ? 0 : 1
       return sevRank * 10 + stRank
     }
     return list.filter((a) => passes(a, filters)).sort((a, b) => rank(a) - rank(b))
@@ -121,14 +130,14 @@ function Alerts() {
   }, [filters])
 
   const total = useCountUp(severityCounts.total, 700)
-  const firing = useCountUp(severityCounts.firing, 700)
-  const resolved = useCountUp(severityCounts.resolved, 700)
+  const firing = useCountUp(severityCounts.active, 700)
+  const resolved = useCountUp(severityCounts.expired, 700)
 
   const sevCards: { cls: string; dataSev: 'all' | Severity; label: ReactNode; count: number; meta: string | null; icon: ReactNode | null; metaNode: ReactNode | null }[] = [
-    { cls: 'total', dataSev: 'all', label: '全部告警', count: severityCounts.total, meta: '最近 24h', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>, metaNode: null },
-    { cls: 'critical', dataSev: 'CRITICAL', label: (<><span className="sev-icon">▲</span>CRITICAL</>), count: severityCounts.CRITICAL, meta: null, icon: null, metaNode: (<><span className="firing num">{severityCounts.criticalFiring}</span> firing · <span className="num">{severityCounts.criticalResolved}</span> resolved</>) },
-    { cls: 'warning', dataSev: 'WARNING', label: (<><span className="sev-icon">△</span>WARNING</>), count: severityCounts.WARNING, meta: null, icon: null, metaNode: (<><span className="firing num">{severityCounts.warningFiring}</span> firing · <span className="num">{severityCounts.warningResolved}</span> resolved</>) },
-    { cls: 'info', dataSev: 'INFO', label: (<><span className="sev-icon">○</span>INFO</>), count: severityCounts.INFO, meta: null, icon: null, metaNode: (<><span className="num">{severityCounts.infoFiring}</span> firing · <span className="num">{severityCounts.infoResolved}</span> resolved</>) },
+    { cls: 'total', dataSev: 'all', label: 'All Alerts', count: severityCounts.total, meta: 'Last 24h', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>, metaNode: null },
+    { cls: 'critical', dataSev: 'CRITICAL', label: (<><span className="sev-icon">▲</span>CRITICAL</>), count: severityCounts.CRITICAL, meta: null, icon: null, metaNode: (<><span className="firing num">{severityCounts.criticalActive}</span> active · <span className="num">{severityCounts.criticalExpired}</span> expired</>) },
+    { cls: 'warning', dataSev: 'WARNING', label: (<><span className="sev-icon">△</span>WARNING</>), count: severityCounts.WARNING, meta: null, icon: null, metaNode: (<><span className="firing num">{severityCounts.warningActive}</span> active · <span className="num">{severityCounts.warningExpired}</span> expired</>) },
+    { cls: 'info', dataSev: 'INFO', label: (<><span className="sev-icon">○</span>INFO</>), count: severityCounts.INFO, meta: null, icon: null, metaNode: (<><span className="num">{severityCounts.infoActive}</span> active · <span className="num">{severityCounts.infoExpired}</span> expired</>) },
   ]
 
   const setSev = (sev: 'all' | Severity) => setFilters((f) => ({ ...f, sev }))
@@ -141,7 +150,7 @@ function Alerts() {
   const connectionPill = (
     <div className="connection-pill">
       <span className="live-dot" />
-      <span>实时 · 已连接</span>
+      <span>Real-Time · Connected</span>
     </div>
   )
 
@@ -152,9 +161,9 @@ function Alerts() {
       <main className="page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">告警列表</h1>
+            <h1 className="page-title">Alerts</h1>
             <p className="page-subtitle">
-              <span className="num">{total}</span> 条告警 · <span className="num">{firing}</span> FIRING · <span className="num">{resolved}</span> RESOLVED
+              <span className="num">{total}</span> alerts · <span className="num">{firing}</span> ACTIVE · <span className="num">{resolved}</span> EXPIRED
             </p>
           </div>
         </div>
@@ -180,12 +189,12 @@ function Alerts() {
         {/* Filters */}
         <div className="filters">
           <div className="filter-group">
-            <span className="filter-label">严重度</span>
+            <span className="filter-label">Severity</span>
             <div className="severity-picker">
               <button
                 className={`sev-pill${filters.sev === 'all' ? ' active' : ''}`}
                 onClick={() => setSev('all')}
-              >全部</button>
+              >All</button>
               <button
                 className={`sev-pill crit${filters.sev === 'CRITICAL' ? ' active' : ''}`}
                 onClick={() => setSev('CRITICAL')}
@@ -202,24 +211,24 @@ function Alerts() {
           </div>
 
           <div className="filter-group">
-            <span className="filter-label">状态</span>
+            <span className="filter-label">Status</span>
             <div className="status-picker">
-              {(['all', 'FIRING', 'RESOLVED'] as const).map((st) => (
+              {(['all', 'ACTIVE', 'EXPIRED'] as const).map((st) => (
                 <button
                   key={st}
                   className={`opt-pill${filters.status === st.toLowerCase() || (filters.status === 'all' && st === 'all') ? ' active' : ''}`}
                   onClick={() => setFilters((f) => ({ ...f, status: st === 'all' ? 'all' : st }))}
                 >
-                  {st === 'all' ? '全部' : st}
+                  {st === 'all' ? 'All' : st}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="filter-group">
-            <span className="filter-label">团队</span>
+            <span className="filter-label">Team</span>
             <div className="team-picker">
-              {([['all', '全部'], ['payment', '支付'], ['risk', '风控'], ['ops', '运维']] as const).map(([team, label]) => (
+              {([['all', 'All'], ['payment', 'Payment'], ['risk', 'Risk'], ['ops', 'Ops']] as const).map(([team, label]) => (
                 <button
                   key={team}
                   className={`opt-pill${filters.team === team ? ' active' : ''}`}
@@ -237,7 +246,7 @@ function Alerts() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
             <input
               type="text"
-              placeholder="搜索 fingerprint / entity…"
+              placeholder="Search fingerprint / entity…"
               value={filters.q}
               onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value.trim() }))}
             />
@@ -254,7 +263,7 @@ function Alerts() {
         </div>
 
         <div className="list-footer">
-          显示 <span className="num">{filtered.length}</span> / <span className="num">{severityCounts.total}</span> 条 · 自动加载更多
+          Showing <span className="num">{filtered.length}</span> of <span className="num">{severityCounts.total}</span> · auto-load more
         </div>
       </main>
     </>

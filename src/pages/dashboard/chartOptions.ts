@@ -111,7 +111,7 @@ export function buildSeverityOption(): EChartsOption {
       itemStyle: { borderColor: '#fff', borderWidth: 3 },
       label: {
         show: true, position: 'center',
-        formatter: '{c|64}\n{a|今日告警}',
+        formatter: '{c|64}\n{a|Today\'s Alerts}',
         rich: {
           c: { fontSize: 28, fontWeight: 700, color: '#0F172A', fontFamily: 'Fira Code', lineHeight: 32 },
           a: { fontSize: 11, color: '#64748B', fontFamily: 'Fira Sans' },

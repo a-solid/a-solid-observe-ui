@@ -30,7 +30,7 @@ const PIPELINE_NODES: PipelineNode[] = [
   {
     label: 'Source',
     name: 'CDC · orders',
-    meta: '事件',
+    meta: 'Events',
     metaNum: '1,284',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -43,8 +43,8 @@ const PIPELINE_NODES: PipelineNode[] = [
   },
   {
     label: 'Subscription',
-    name: '高额订单监控',
-    meta: '命中',
+    name: 'High-Amount Orders',
+    meta: 'Matches',
     metaNum: '312',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -54,9 +54,9 @@ const PIPELINE_NODES: PipelineNode[] = [
     danger: false,
   },
   {
-    label: 'Pipeline',
-    name: 'check: 高额订单',
-    meta: '执行',
+    label: 'Rule',
+    name: 'check: high-amount-order',
+    meta: 'Runs',
     metaNum: '312',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +67,7 @@ const PIPELINE_NODES: PipelineNode[] = [
   },
   {
     label: 'Alert',
-    name: '触发告警',
+    name: 'Trigger Alert',
     meta: (
       <>
         <span className="sev-tag critical">CRI 12</span>
@@ -167,10 +167,10 @@ function Dashboard() {
   }, [trendChart.chart])
 
   const timeRange = (
-    <div className="time-range" role="tablist" aria-label="时间范围">
-      <button className="active" type="button">今日</button>
-      <button type="button">7 天</button>
-      <button type="button">30 天</button>
+    <div className="time-range" role="tablist" aria-label="Time range">
+      <button className="active" type="button">Today</button>
+      <button type="button">7 Days</button>
+      <button type="button">30 Days</button>
     </div>
   )
 
@@ -183,16 +183,16 @@ function Dashboard() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-head">
             <div>
-              <p className="hero-title" id="hero-title">今日概览 · 数据溯源链路</p>
+              <p className="hero-title" id="hero-title">Today's Overview · End-to-End Traceability</p>
               <h1 className="hero-headline">
-                <span className="num">{heroEvents.toLocaleString()}</span> 个事件流经管道
+                <span className="num">{heroEvents.toLocaleString()}</span> events flowed through rules
                 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, margin: '0 8px' }}>·</span>
-                触发 <span className="num alert-count">{heroAlerts}</span> 条告警
+                triggering <span className="num alert-count">{heroAlerts}</span> alerts
               </h1>
             </div>
             <span className="hero-realtime">
               <span className="pulse-dot" />
-              实时 · 已连接
+              Real-Time · Connected
             </span>
           </div>
 
@@ -245,11 +245,11 @@ function Dashboard() {
         </section>
 
         {/* KPI cards */}
-        <section className="kpi-grid" aria-label="今日核心指标">
-          <Kpi label="今日告警总数" value={64} sub="较昨日 +5" trend="up" trendLabel="▲ 8%" spark={sparkData.total} sparkColor="#1E40AF" />
-          <Kpi label="FIRING" value={8} variant="firing" sub="需处理 · 4 条 ack 中" trend="up" trendLabel="▲ 2" spark={sparkData.firing} sparkColor="#DC2626" />
-          <Kpi label="CRITICAL" value={12} variant="critical" sub="最严重 · 全部已 ack" trend="flat" trendLabel="— 持平" spark={sparkData.critical} sparkColor="#DC2626" />
-          <Kpi label="执行成功率" value={98.4} unit="%" sub="1,204 成功 / 21 失败" trend="down" trendLabel="▼ 0.3%" spark={sparkData.success} sparkColor="#16A34A" />
+        <section className="kpi-grid" aria-label="Today's key metrics">
+          <Kpi label="Today's Alerts" value={64} sub="+5 vs. yesterday" trend="up" trendLabel="▲ 8%" spark={sparkData.total} sparkColor="#1E40AF" />
+          <Kpi label="FIRING" value={8} variant="firing" sub="Action needed · 4 acked" trend="up" trendLabel="▲ 2" spark={sparkData.firing} sparkColor="#DC2626" />
+          <Kpi label="CRITICAL" value={12} variant="critical" sub="Most severe · all acked" trend="flat" trendLabel="— Flat" spark={sparkData.critical} sparkColor="#DC2626" />
+          <Kpi label="Execution Success Rate" value={98.4} unit="%" sub="1,204 succeeded / 21 failed" trend="down" trendLabel="▼ 0.3%" spark={sparkData.success} sparkColor="#16A34A" />
         </section>
 
         {/* Trend charts */}
@@ -257,8 +257,8 @@ function Dashboard() {
           <article className="card">
             <header className="card-head">
               <div>
-                <h3 className="card-title">告警趋势（按小时）</h3>
-                <p className="card-sub">今日 00:00 至现在 · 按 severity 堆叠</p>
+                <h3 className="card-title">Alert Trend (Hourly)</h3>
+                <p className="card-sub">Today 00:00 – now · stacked by severity</p>
               </div>
               <div className="legend">
                 <span className="legend-dot" style={{ '--lc': '#DC2626' } as CSSProperties}>CRITICAL</span>
@@ -266,21 +266,21 @@ function Dashboard() {
                 <span className="legend-dot" style={{ '--lc': '#0EA5E9' } as CSSProperties}>INFO</span>
               </div>
             </header>
-            <div className="chart" ref={trendChart.ref} role="img" aria-label="告警趋势堆叠面积图" />
+            <div className="chart" ref={trendChart.ref} role="img" aria-label="Alert trend stacked area chart" />
           </article>
 
           <article className="card">
             <header className="card-head">
               <div>
-                <h3 className="card-title">执行吞吐（按小时）</h3>
-                <p className="card-sub">success / failed 双系列</p>
+                <h3 className="card-title">Execution Throughput (Hourly)</h3>
+                <p className="card-sub">success / failed dual series</p>
               </div>
               <div className="legend">
                 <span className="legend-dot" style={{ '--lc': '#16A34A' } as CSSProperties}>SUCCESS</span>
                 <span className="legend-dot" style={{ '--lc': '#DC2626' } as CSSProperties}>FAILED</span>
               </div>
             </header>
-            <div className="chart" ref={throughputChart.ref} role="img" aria-label="执行吞吐柱状图" />
+            <div className="chart" ref={throughputChart.ref} role="img" aria-label="Execution throughput bar chart" />
           </article>
         </section>
 
@@ -289,8 +289,8 @@ function Dashboard() {
           <article className="card">
             <header className="card-head">
               <div>
-                <h3 className="card-title">告警按 severity 分布</h3>
-                <p className="card-sub">今日共 64 条</p>
+                <h3 className="card-title">Alerts by Severity</h3>
+                <p className="card-sub">64 total today</p>
               </div>
             </header>
             <SeverityChart />
@@ -299,8 +299,8 @@ function Dashboard() {
           <article className="card">
             <header className="card-head">
               <div>
-                <h3 className="card-title">告警按 team 分布</h3>
-                <p className="card-sub">Top 5 团队</p>
+                <h3 className="card-title">Alerts by Team</h3>
+                <p className="card-sub">Top 5 teams</p>
               </div>
             </header>
             <TeamChart />
@@ -311,14 +311,14 @@ function Dashboard() {
         <section className="grid-2-equal">
           <article className="card">
             <header className="card-head">
-              <h3 className="card-title">最活跃 Pipeline · Top 5</h3>
+              <h3 className="card-title">Most Active Rules · Top 5</h3>
             </header>
             <TopList items={topPipelines} />
           </article>
 
           <article className="card">
             <header className="card-head">
-              <h3 className="card-title">最频繁告警 fingerprint · Top 5</h3>
+              <h3 className="card-title">Most Frequent Alert Fingerprints · Top 5</h3>
             </header>
             <TopList items={topFingerprints} />
           </article>
@@ -331,11 +331,11 @@ function Dashboard() {
 // Separate components so each gets its own hook instance (hooks can't be called conditionally).
 function SeverityChart() {
   const { ref } = useECharts(buildSeverityOption())
-  return <div className="chart" ref={ref} role="img" aria-label="告警按严重度分布饼图" />
+  return <div className="chart" ref={ref} role="img" aria-label="Alert severity distribution pie chart" />
 }
 function TeamChart() {
   const { ref } = useECharts(buildTeamOption())
-  return <div className="chart" ref={ref} role="img" aria-label="告警按团队分布横向柱状图" />
+  return <div className="chart" ref={ref} role="img" aria-label="Alert team distribution horizontal bar chart" />
 }
 
 export default Dashboard

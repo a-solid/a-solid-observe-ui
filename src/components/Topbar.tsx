@@ -58,25 +58,25 @@ const PlayIcon = (
 const NAV_SEGMENTS: RoleSegment[] = [
   {
     key: 'common',
-    label: '公共',
+    label: 'Common',
     items: [
-      { to: '/', label: '大盘', icon: DashboardIcon, match: (p) => p === '/' },
+      { to: '/', label: 'Dashboard', icon: DashboardIcon, match: (p) => p === '/' },
     ],
   },
   {
     key: 'alert',
-    label: '告警处理者',
+    label: 'Alert Responders',
     items: [
-      { to: '/alerts', label: '告警', icon: BellIcon, match: (p) => p.startsWith('/alerts') },
-      { to: '/executions', label: '执行历史', icon: PulseIcon, match: (p) => p.startsWith('/executions') },
+      { to: '/alerts', label: 'Alerts', icon: BellIcon, match: (p) => p.startsWith('/alerts') },
+      { to: '/executions', label: 'Execution History', icon: PulseIcon, match: (p) => p.startsWith('/executions') },
     ],
   },
   {
     key: 'config',
-    label: 'Pipeline 开发维护者',
+    label: 'Rule Developers',
     items: [
-      { to: '/pipelines', label: 'Pipelines', icon: FlowIcon, match: (p) => p.startsWith('/pipelines') },
-      { to: '/subscriptions', label: '订阅', icon: FilterIcon, match: (p) => p.startsWith('/subscriptions') },
+      { to: '/pipelines', label: 'Rules', icon: FlowIcon, match: (p) => p.startsWith('/pipelines') },
+      { to: '/subscriptions', label: 'Subscriptions', icon: FilterIcon, match: (p) => p.startsWith('/subscriptions') },
     ],
   },
 ]
@@ -90,9 +90,9 @@ function ChevronDown({ size = 12 }: { size?: number }) {
 }
 
 const SEGMENT_ARIA: Record<RoleKey, string> = {
-  common: '公共导航',
-  alert: '告警处理者导航',
-  config: 'Pipeline 开发维护者导航',
+  common: 'Common navigation',
+  alert: 'Alert responders navigation',
+  config: 'Rule developers navigation',
 }
 
 /**
@@ -153,14 +153,14 @@ export function Topbar({
         </Link>
 
         {showNamespace && (
-          <button className="namespace-switch" type="button" aria-label="切换 namespace" title="切换 namespace">
+          <button className="namespace-switch" type="button" aria-label="Switch namespace" title="Switch namespace">
             <span className="namespace-dot" />
             <span>namespace:&nbsp;<strong>{namespace}</strong></span>
             <ChevronDown />
           </button>
         )}
 
-        <nav className="role-nav" aria-label="主导航">
+        <nav className="role-nav" aria-label="Main navigation">
           {NAV_SEGMENTS.map((seg, idx) => (
             <span key={seg.key} className="role-nav-group">
               {idx > 0 && <span className="role-divider" aria-hidden="true" />}

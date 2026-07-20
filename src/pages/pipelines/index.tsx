@@ -13,10 +13,10 @@ const ICON_VER = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const ICON_GROOVY = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6" /></svg>
 
 const CONFIG_SUBTABS = [
-  { to: '/pipelines', label: 'Pipeline', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7" /></svg> },
+  { to: '/pipelines', label: 'Rules', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7" /></svg> },
   { to: '/subscriptions', label: 'Subscription', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v16H4z" /><path d="M4 9h16M9 4v16" /></svg> },
-  { to: '/pipelines/high-amount-order-alert/edit', label: '编辑器', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg> },
-  { to: '/pipelines/high-amount-order-alert/versions', label: '版本', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v8M8 12h8" /><circle cx="12" cy="12" r="10" /></svg> },
+  { to: '/pipelines/high-amount-order-alert/edit', label: 'Editor', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg> },
+  { to: '/pipelines/high-amount-order-alert/versions', label: 'Versions', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v8M8 12h8" /><circle cx="12" cy="12" r="10" /></svg> },
 ]
 
 function statusColor(s: PipeStatus): string {
@@ -69,7 +69,7 @@ function PipeCard({ p, index }: { p: Pipeline; index: number }) {
       </div>
 
       <div className="pipe-card-tags">
-        <span className="tag groovy" title="单节点 · Groovy 脚本">{ICON_GROOVY}Groovy · {p.groovyLines} 行</span>
+        <span className="tag groovy" title="Single-node · Groovy script">{ICON_GROOVY}Groovy · {p.groovyLines} lines</span>
         {labelEntries.map(([k, v]) => (
           <span key={k} className={`tag label ${k === 'team' ? 'team' : k === 'app' ? 'app' : ''}`}>
             <span className="lk">{k}</span>
@@ -82,8 +82,8 @@ function PipeCard({ p, index }: { p: Pipeline; index: number }) {
       {p.status !== 'ARCHIVED' && (
         <div className="pipe-card-spark">
           <div className="pipe-card-spark-head">
-            <span className="pipe-card-spark-label">近期执行 · 12h</span>
-            <span className="pipe-card-spark-num">{p.execCount.toLocaleString()} 次</span>
+            <span className="pipe-card-spark-label">Recent executions · 12h</span>
+            <span className="pipe-card-spark-num">{p.execCount.toLocaleString()} runs</span>
           </div>
           <Sparkline data={p.spark} color={statusColor(p.status)} />
         </div>
@@ -94,9 +94,9 @@ function PipeCard({ p, index }: { p: Pipeline; index: number }) {
           <span className="foot-item">{ICON_TIME}{p.updatedAt}</span>
         </div>
         <div className="pipe-card-actions">
-          <Link to={`/pipelines/${p.name}/versions`} className="icon-btn" title="查看">{ICON_VIEW}</Link>
-          <Link to={`/pipelines/${p.name}/edit`} className="icon-btn" title="编辑">{ICON_EDIT}</Link>
-          <button className="icon-btn" title="归档" onClick={(e) => e.preventDefault()}>{ICON_ARCHIVE}</button>
+          <Link to={`/pipelines/${p.name}/versions`} className="icon-btn" title="View">{ICON_VIEW}</Link>
+          <Link to={`/pipelines/${p.name}/edit`} className="icon-btn" title="Edit">{ICON_EDIT}</Link>
+          <button className="icon-btn" title="Archive" onClick={(e) => e.preventDefault()}>{ICON_ARCHIVE}</button>
         </div>
       </div>
     </article>
@@ -129,9 +129,9 @@ function Pipelines() {
       <main className="page pipelines-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Pipeline</h1>
+            <h1 className="page-title">Rules</h1>
             <p className="page-subtitle">
-              <span className="num">9</span> 个 pipeline ·{' '}
+              <span className="num">9</span> rules ·{' '}
               <span className="num" style={{ color: 'var(--pipe-published)', fontWeight: 600 }}>6</span> PUBLISHED ·{' '}
               <span className="num" style={{ color: 'var(--pipe-draft)', fontWeight: 600 }}>2</span> DRAFT ·{' '}
               <span className="num" style={{ color: 'var(--pipe-archived)' }}>1</span> ARCHIVED
@@ -139,15 +139,15 @@ function Pipelines() {
           </div>
           <button className="btn-new">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg>
-            新建 Pipeline
+            New Rule
           </button>
         </div>
 
         <div className="filters">
           <div className="filter-group">
-            <span className="filter-label">状态</span>
+            <span className="filter-label">Status</span>
             <div className="pill-group">
-              <button className={statusPillCls('all')} onClick={() => setStatus('all')}>全部</button>
+              <button className={statusPillCls('all')} onClick={() => setStatus('all')}>All</button>
               {(['PUBLISHED', 'DRAFT', 'ARCHIVED'] as const).map((s) => (
                 <button key={s} className={statusPillCls(s)} onClick={() => setStatus(s)}>
                   <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
@@ -158,10 +158,10 @@ function Pipelines() {
           </div>
 
           <div className="filter-group">
-            <span className="filter-label">团队</span>
+            <span className="filter-label">Team</span>
             <div className="pill-group">
-              <button className={`opt-pill${team === 'all' ? ' active primary' : ''}`} onClick={() => setTeam('all')}>全部</button>
-              {([['payment', '支付'], ['risk', '风控'], ['ops', '运维']] as const).map(([t, label]) => (
+              <button className={`opt-pill${team === 'all' ? ' active primary' : ''}`} onClick={() => setTeam('all')}>All</button>
+              {([['payment', 'Payment'], ['risk', 'Risk'], ['ops', 'Ops']] as const).map(([t, label]) => (
                 <button key={t} className={`opt-pill${team === t ? ' active primary' : ''}`} onClick={() => setTeam(t)}>{label}</button>
               ))}
             </div>
@@ -171,7 +171,7 @@ function Pipelines() {
 
           <div className="search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-            <input type="text" placeholder="搜索 name / application..." value={q} onChange={(e) => setQ(e.target.value.trim())} />
+            <input type="text" placeholder="Search name / application..." value={q} onChange={(e) => setQ(e.target.value.trim())} />
           </div>
         </div>
 
@@ -182,7 +182,7 @@ function Pipelines() {
         </div>
 
         <div className="list-footer">
-          共 <span className="num">9</span> 个 pipeline
+          <span className="num">9</span> rules total
         </div>
       </main>
     </>

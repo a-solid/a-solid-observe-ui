@@ -3,7 +3,7 @@
 export const stats = {
   // GET /api/v1/stats/alerts
   bySeverity: { CRITICAL: 12, WARNING: 47, INFO: 5 },
-  byStatus: { FIRING: 8, RESOLVED: 56 },
+  byStatus: { ACTIVE: 8, EXPIRED: 56 },
   total: 64,
   // GET /api/v1/stats/executions
   executions: { success: 1204, failed: 21, short_circuited: 87, successRate: 98.4 },
@@ -35,11 +35,11 @@ export const teamDist = [
 ]
 
 export const topPipelines = [
-  { name: '高额订单告警', count: 28 },
-  { name: '支付失败监控', count: 18 },
-  { name: '风控规则引擎', count: 12 },
-  { name: '库存同步检测', count: 8 },
-  { name: '登录异常告警', count: 5 },
+  { name: 'high-amount-order-alert', count: 28 },
+  { name: 'payment-failure-monitor', count: 18 },
+  { name: 'risk-rule-engine', count: 12 },
+  { name: 'inventory-drift-check', count: 8 },
+  { name: 'login-anomaly-alert', count: 5 },
 ]
 
 export const topFingerprints = [

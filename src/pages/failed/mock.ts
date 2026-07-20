@@ -29,31 +29,31 @@ export const errorGroups: { type: string; count: number; cards: FailCardData[] }
     type: 'NullPointerException',
     count: 2,
     cards: [
-      { id: 'f1', status: 'pending', errorTypeShort: 'NPE @ check', nodeName: 'check', pipelineTitle: '高额订单告警', pipeline: 'high-amount-order-alert v3', createdAt: '14:31:48', rel: '2 分钟前' },
-      { id: 'f2', status: 'resolved', errorTypeShort: 'NPE @ check', nodeName: 'check', pipelineTitle: '库存告警', pipeline: 'inventory-alert v2', createdAt: '13:42:11', rel: '已修复' },
+      { id: 'f1', status: 'pending', errorTypeShort: 'NPE @ check', nodeName: 'check', pipelineTitle: 'High-Amount Alert', pipeline: 'high-amount-order-alert v3', createdAt: '14:31:48', rel: '2 min ago' },
+      { id: 'f2', status: 'resolved', errorTypeShort: 'NPE @ check', nodeName: 'check', pipelineTitle: 'Inventory Alert', pipeline: 'inventory-alert v2', createdAt: '13:42:11', rel: 'Resolved' },
     ],
   },
   {
     type: 'EmitError',
     count: 1,
     cards: [
-      { id: 'f3', status: 'pending', errorTypeShort: 'EmitError @ emit', nodeName: 'emit', pipelineTitle: '风控评分监控', pipeline: 'risk-score-monitor v2', createdAt: '14:28:33', rel: '5 分钟前' },
+      { id: 'f3', status: 'pending', errorTypeShort: 'EmitError @ emit', nodeName: 'emit', pipelineTitle: 'Risk Score Monitor', pipeline: 'risk-score-monitor v2', createdAt: '14:28:33', rel: '5 min ago' },
     ],
   },
   {
     type: 'SchemaMismatch',
     count: 2,
     cards: [
-      { id: 'f4', status: 'pending', errorTypeShort: 'SchemaMismatch @ map', nodeName: 'map', pipelineTitle: '订单回调监控', pipeline: 'payment-callback-monitor v2', createdAt: '14:15:02', rel: '18 分钟前' },
-      { id: 'f5', status: 'ignored', errorTypeShort: 'SchemaMismatch @ map', nodeName: 'map', pipelineTitle: '网关延迟监控', pipeline: 'gateway-latency-alert v2', createdAt: '09:11:48', rel: '已忽略' },
+      { id: 'f4', status: 'pending', errorTypeShort: 'SchemaMismatch @ map', nodeName: 'map', pipelineTitle: 'Payment Callback Monitor', pipeline: 'payment-callback-monitor v2', createdAt: '14:15:02', rel: '18 min ago' },
+      { id: 'f5', status: 'ignored', errorTypeShort: 'SchemaMismatch @ map', nodeName: 'map', pipelineTitle: 'Gateway Latency Alert', pipeline: 'gateway-latency-alert v2', createdAt: '09:11:48', rel: 'Ignored' },
     ],
   },
   {
     type: 'TimeoutError',
     count: 2,
     cards: [
-      { id: 'f6', status: 'pending', errorTypeShort: 'TimeoutError @ http', nodeName: 'http', pipelineTitle: '外部接口探测', pipeline: 'external-probe v1', createdAt: '14:02:21', rel: '30 分钟前' },
-      { id: 'f7', status: 'resolved', errorTypeShort: 'TimeoutError @ http', nodeName: 'http', pipelineTitle: 'Redis 探活', pipeline: 'redis-probe v1', createdAt: '12:18:54', rel: '已恢复' },
+      { id: 'f6', status: 'pending', errorTypeShort: 'TimeoutError @ http', nodeName: 'http', pipelineTitle: 'External API Probe', pipeline: 'external-probe v1', createdAt: '14:02:21', rel: '30 min ago' },
+      { id: 'f7', status: 'resolved', errorTypeShort: 'TimeoutError @ http', nodeName: 'http', pipelineTitle: 'Redis Probe', pipeline: 'redis-probe v1', createdAt: '12:18:54', rel: 'Recovered' },
     ],
   },
 ]
@@ -61,7 +61,7 @@ export const errorGroups: { type: string; count: number; cards: FailCardData[] }
 export const failures: Record<string, Failure> = {
   f1: {
     id: 'f1', status: 'pending', errorTypeShort: 'NPE @ check', nodeName: 'check',
-    pipelineTitle: '高额订单告警', pipeline: 'high-amount-order-alert v3', createdAt: '14:31:48', rel: '2 分钟前',
+    pipelineTitle: 'High-Amount Alert', pipeline: 'high-amount-order-alert v3', createdAt: '14:31:48', rel: '2 min ago',
     errorType: 'NullPointerException', failStage: 'process',
     errorMessage: 'Cannot invoke "Object.compareTo(Object)" because "value" is null',
     isoCreatedAt: '2026-07-19T14:31:48Z', failedAt: 'check.value.compareTo',
@@ -75,7 +75,7 @@ export const failures: Record<string, Failure> = {
   },
   f3: {
     id: 'f3', status: 'pending', errorTypeShort: 'EmitError @ emit', nodeName: 'emit',
-    pipelineTitle: '风控评分监控', pipeline: 'risk-score-monitor v2', createdAt: '14:28:33', rel: '5 分钟前',
+    pipelineTitle: 'Risk Score Monitor', pipeline: 'risk-score-monitor v2', createdAt: '14:28:33', rel: '5 min ago',
     errorType: 'EmitError', failStage: 'output',
     errorMessage: 'Alert emit failed: downstream alertmanager timeout (3s) while sending alert risk-score-anomaly',
     isoCreatedAt: '2026-07-19T14:28:33Z', failedAt: 'emit.alertmanager.send',
@@ -89,7 +89,7 @@ export const failures: Record<string, Failure> = {
   },
   f4: {
     id: 'f4', status: 'pending', errorTypeShort: 'SchemaMismatch @ map', nodeName: 'map',
-    pipelineTitle: '订单回调监控', pipeline: 'payment-callback-monitor v2', createdAt: '14:15:02', rel: '18 分钟前',
+    pipelineTitle: 'Payment Callback Monitor', pipeline: 'payment-callback-monitor v2', createdAt: '14:15:02', rel: '18 min ago',
     errorType: 'SchemaMismatch', failStage: 'input',
     errorMessage: 'Field "callbackStatus" missing from event schema (expected: enum, actual: missing)',
     isoCreatedAt: '2026-07-19T14:15:02Z', failedAt: 'map.field.callbackStatus',
@@ -103,7 +103,7 @@ export const failures: Record<string, Failure> = {
   },
   f6: {
     id: 'f6', status: 'pending', errorTypeShort: 'TimeoutError @ http', nodeName: 'http',
-    pipelineTitle: '外部接口探测', pipeline: 'external-probe v1', createdAt: '14:02:21', rel: '30 分钟前',
+    pipelineTitle: 'External API Probe', pipeline: 'external-probe v1', createdAt: '14:02:21', rel: '30 min ago',
     errorType: 'TimeoutError', failStage: 'process',
     errorMessage: 'HTTP request to https://api.partner.internal/sync timed out after 5000ms',
     isoCreatedAt: '2026-07-19T14:02:21Z', failedAt: 'http.request.partner',

@@ -8,7 +8,7 @@ interface Subtab {
 }
 
 /**
- * Secondary nav for the b-series (告警) and a-series (配置) pages.
+ * Secondary nav for the b-series (Alerts) and a-series (Config) pages.
  * Active state derived from current path.
  */
 export function Subtabs({ tabs }: { tabs: Subtab[] }) {

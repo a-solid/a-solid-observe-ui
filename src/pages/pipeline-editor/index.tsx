@@ -66,14 +66,14 @@ function CausalCard({ node, ev }: { node: string; ev: DryRunEvent }) {
   if (node === 'script') {
     return (
       <div className="causal-card success">
-        <span className="k">groovy</span>: amount(<span className="n">{amount}</span>) <span className="n">&gt;</span> threshold(<span className="n">10000</span>) → <span className="b">return true</span> · 耗时 <span className="n">3.2ms</span>
+        <span className="k">groovy</span>: amount(<span className="n">{amount}</span>) <span className="n">&gt;</span> threshold(<span className="n">10000</span>) → <span className="b">return true</span> · took <span className="n">3.2ms</span>
       </div>
     )
   }
   if (node === 'script-miss') {
     return (
       <div className="causal-card">
-        <span className="k">groovy</span>: amount(<span className="n">{amount}</span>) <span className="n">&gt;</span> threshold(<span className="n">10000</span>) → <span className="b">return false</span> · 耗时 <span className="n">2.1ms</span>
+        <span className="k">groovy</span>: amount(<span className="n">{amount}</span>) <span className="n">&gt;</span> threshold(<span className="n">10000</span>) → <span className="b">return false</span> · took <span className="n">2.1ms</span>
       </div>
     )
   }
@@ -91,7 +91,7 @@ function CausalCard({ node, ev }: { node: string; ev: DryRunEvent }) {
   // output-miss
   return (
     <div className="causal-card">
-      <span className="k">NodeOutcome.SHORT_CIRCUIT</span> · 未触发告警 · 流程终止
+      <span className="k">NodeOutcome.SHORT_CIRCUIT</span> · No alert triggered · Flow terminated
     </div>
   )
 }
@@ -111,7 +111,7 @@ function PipelineEditor() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduce) {
       setShownSteps(data.steps.length)
-      toast.success(ev === 'match' ? '干跑完成 · 命中告警条件' : '干跑完成 · 未命中')
+      toast.success(ev === 'match' ? 'Dry run complete · Alert condition matched' : 'Dry run complete · Not matched')
       return
     }
     for (let i = 1; i <= data.steps.length; i++) {
@@ -121,7 +121,7 @@ function PipelineEditor() {
         runTimer.current = window.setTimeout(r, 400)
       })
     }
-    toast.success(ev === 'match' ? '干跑完成 · 命中告警条件' : '干跑完成 · 未命中')
+    toast.success(ev === 'match' ? 'Dry run complete · Alert condition matched' : 'Dry run complete · Not matched')
   }
 
   useEffect(() => () => { if (runTimer.current) window.clearTimeout(runTimer.current) }, [])
@@ -139,16 +139,16 @@ function PipelineEditor() {
     setInjecting(false)
     if (result.outcome === 'SUCCESS') {
       if (result.alertFingerprint) {
-        toast.success('注入成功 · 已生成告警', { description: `fingerprint=${result.alertFingerprint}` })
+        toast.success('Inject succeeded · Alert generated', { description: `fingerprint=${result.alertFingerprint}` })
       } else {
-        toast.success('注入成功 · 未命中告警条件')
+        toast.success('Inject succeeded · Alert condition not matched')
       }
     } else if (result.outcome === 'FAILED') {
-      toast.error('注入失败 · runner 抛出异常')
+      toast.error('Inject failed · Runner threw an exception')
     } else if (result.outcome === 'PIPELINE_NOT_FOUND') {
-      toast.error('Pipeline 未加载', { description: '检查是否已发布/热加载' })
+      toast.error('Rule not loaded', { description: 'Check if it is published / hot-reloaded' })
     } else {
-      toast.error('eventJson 不合法')
+      toast.error('Invalid eventJson')
     }
   }
 
@@ -177,7 +177,7 @@ function PipelineEditor() {
 
   return (
     <>
-      {/* Custom topbar — no namespace, role tab 配置 */}
+      {/* Custom topbar — no namespace, role tab Config */}
       <header className="topbar">
         <div className="topbar-inner" style={{ maxWidth: 1600, padding: '14px var(--space-xl)', gap: 'var(--space-lg)' }}>
           <Link className="brand" to="/">
@@ -186,33 +186,33 @@ function PipelineEditor() {
           </Link>
           <div className="nav-spacer" />
           <nav className="role-tabs">
-            <Link to="/" className="role-tab">大盘</Link>
-            <Link to="/alerts" className="role-tab">告警</Link>
-            <Link to="/pipelines" className="role-tab active">配置</Link>
+            <Link to="/" className="role-tab">Dashboard</Link>
+            <Link to="/alerts" className="role-tab">Alerts</Link>
+            <Link to="/pipelines" className="role-tab active">Config</Link>
           </nav>
         </div>
       </header>
 
       <div className="editor-toolbar">
         <div className="editor-toolbar-inner">
-          <span className="editor-name">高额订单告警</span>
+          <span className="editor-name">High-Amount Order Alert</span>
           <span className="editor-version"><span className="dot" />draft v4</span>
-          <span className="editor-meta">namespace/ops · 未保存改动</span>
+          <span className="editor-meta">namespace/ops · Unsaved changes</span>
           <div className="toolbar-spacer" />
-          <button className="btn btn-secondary" onClick={() => toast.success('校验通过 · definitionHash 已生成')}>
+          <button className="btn btn-secondary" onClick={() => toast.success('Validation passed · definitionHash generated')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-            校验
+            Validate
           </button>
           <button className="btn btn-warn" onClick={() => { document.querySelector('.right-pane')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.setTimeout(runDryRun, 400) }}>
-            {ICON_BOLT}干跑
+            {ICON_BOLT}Dry Run
           </button>
-          <button className="btn btn-secondary" onClick={() => toast.success('已保存为新版本 · draft v5')}>
+          <button className="btn btn-secondary" onClick={() => toast.success('Saved as new version · draft v5')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
-            保存版本
+            Save Version
           </button>
-          <button className="btn btn-primary" onClick={() => toast.success('已发布 · v5 PUBLISHED')}>
+          <button className="btn btn-primary" onClick={() => toast.success('Published · v5 PUBLISHED')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-            发布
+            Publish
           </button>
         </div>
       </div>
@@ -223,7 +223,7 @@ function PipelineEditor() {
           <div className="pane-tabs">
             <button className={`pane-tab${tab === 'visual' ? ' active' : ''}`} onClick={() => setTab('visual')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /></svg>
-              可视化
+              Visual
             </button>
             <button className={`pane-tab${tab === 'json' ? ' active' : ''}`} onClick={() => setTab('json')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6" /></svg>
@@ -253,10 +253,10 @@ function PipelineEditor() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#94A3B8', fontFamily: "'Fira Code', monospace" }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#86EFAC' }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l5 5L20 7" /></svg>
-                            编译通过
+                            Compiled
                           </span>
                           <span>·</span>
-                          <span>{code.split('\n').length} 行 · {code.length} 字符</span>
+                          <span>{code.split('\n').length} lines · {code.length} chars</span>
                         </div>
                       </div>
                       {groovyHost}
@@ -284,8 +284,8 @@ function PipelineEditor() {
                 <div className="labels-block">
                   <div className="labels-head">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><path d="M7 7h.01" /></svg>
-                    <span className="lh-title">Pipeline 元数据 Labels</span>
-                    <span className="lh-hint">用于列表过滤、告警 silencing 匹配 · Map&lt;String,String&gt;</span>
+                    <span className="lh-title">Rule Metadata Labels</span>
+                    <span className="lh-hint">Used for list filtering, alert silencing matching · Map&lt;String,String&gt;</span>
                     <span className="lh-count">{labels.length}</span>
                   </div>
                   <div className="labels-rows">
@@ -304,7 +304,7 @@ function PipelineEditor() {
                         <button
                           className="label-remove"
                           onClick={() => setLabels((prev) => prev.filter((_, idx) => idx !== i))}
-                          aria-label="删除 label"
+                          aria-label="Remove label"
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 6l12 12M6 18L18 6" /></svg>
                         </button>
@@ -313,18 +313,18 @@ function PipelineEditor() {
                   </div>
                   <button className="label-add" onClick={() => setLabels((prev) => [...prev, { key: '', value: '' }])}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
-                    添加 Label
+                    Add Label
                   </button>
                 </div>
               </>
             ) : (
               <div className="json-editor">
-                <span className="c">{'// PipelineDefinition · draft v4 · GroovyScriptEngine 沙箱（白名单 import / 5s 超时）'}</span>
+                <span className="c">{'// PipelineDefinition · draft v4 · GroovyScriptEngine sandbox (whitelist import / 5s timeout)'}</span>
                 {'\n{\n  '}
                 <span className="k">"id"</span>: <span className="n">1001</span>,
                 {'\n  '}<span className="k">"namespace"</span>: <span className="s">"ops"</span>,
                 {'\n  '}<span className="k">"name"</span>: <span className="s">"high-amount-order-alert"</span>,
-                {'\n  '}<span className="k">"description"</span>: <span className="s">"高额订单告警 · amount &gt; 10000"</span>,
+                {'\n  '}<span className="k">"description"</span>: <span className="s">"High-amount order alert · amount &gt; 10000"</span>,
                 {'\n  '}<span className="k">"status"</span>: <span className="s">"DRAFT"</span>,
                 {'\n  '}<span className="k">"currentVersion"</span>: <span className="n">4</span>,
                 {'\n  '}<span className="k">"labels"</span>: {'{\n    '}
@@ -348,35 +348,35 @@ function PipelineEditor() {
           <div className="section-block">
             <p className="section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-              校验结果
+              Validation Result
             </p>
             <div className="validation-result">
               <div className="validation-icon">{ICON_CHECK}</div>
               <div className="validation-text">
-                <div className="validation-title">校验通过 · 可以发布</div>
+                <div className="validation-title">Validation passed · Ready to publish</div>
                 <div className="validation-sub">definitionHash: 0x9a4f...e21b</div>
               </div>
             </div>
             <div className="validation-checks">
               <div className="check-row">
                 <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">Groovy 编译通过 · <span className="mono">SecureASTCustomizer</span></span>
+                <span className="check-text">Groovy compilation passed · <span className="mono">SecureASTCustomizer</span></span>
               </div>
               <div className="check-row">
                 <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">import 全部命中白名单</span>
+                <span className="check-text">All imports matched the whitelist</span>
               </div>
               <div className="check-row">
                 <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">无 receivers 黑名单调用</span>
+                <span className="check-text">No receivers blacklist calls</span>
               </div>
               <div className="check-row">
                 <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">超时阈值 <span className="mono">5000ms</span> 设置生效</span>
+                <span className="check-text">Timeout threshold <span className="mono">5000ms</span> applied</span>
               </div>
               <div className="check-row muted">
                 <span className="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 8v4" /></svg></span>
-                <span className="check-text">建议：labels 至少标注 <span className="mono">team</span></span>
+                <span className="check-text">Suggestion: labels should at least include <span className="mono">team</span></span>
               </div>
             </div>
           </div>
@@ -384,15 +384,15 @@ function PipelineEditor() {
           <div className="section-block">
             <p className="section-title">
               {ICON_BOLT}
-              干跑 · 因果演示
+              Dry Run · Causal Demo
             </p>
 
             <div className="dryrun-event">
               <div className="dryrun-event-head">
-                <span>示例事件</span>
+                <span>Sample Event</span>
                 <div className="dryrun-event-actions">
-                  <button className={`event-opt${ev === 'match' ? ' active' : ''}`} onClick={() => switchEvent('match')}>命中</button>
-                  <button className={`event-opt${ev === 'miss' ? ' active' : ''}`} onClick={() => switchEvent('miss')}>未命中</button>
+                  <button className={`event-opt${ev === 'match' ? ' active' : ''}`} onClick={() => switchEvent('match')}>Match</button>
+                  <button className={`event-opt${ev === 'miss' ? ' active' : ''}`} onClick={() => switchEvent('miss')}>Miss</button>
                 </div>
               </div>
               <div className="event-json">
@@ -401,7 +401,7 @@ function PipelineEditor() {
             </div>
 
             <button className="run-btn" onClick={runDryRun}>
-              {ICON_PLAY}运行干跑
+              {ICON_PLAY}Run Dry Run
             </button>
 
             <div className="causal-flow">
@@ -418,22 +418,22 @@ function PipelineEditor() {
           <div className="section-block inject-block">
             <p className="section-title inject-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-              生产注入 · 真事件触发
+              Production Inject · Real Event Trigger
             </p>
 
             <div className="inject-warning">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 22h20L12 2z" /><path d="M12 9v4" /><circle cx="12" cy="17" r="0.8" fill="currentColor" /></svg>
               <div>
-                <div className="iw-strong">真落库 · 不会回滚</div>
+                <div className="iw-strong">Real DB write · Not rolled back</div>
                 <div className="iw-sub">
-                  与干跑不同:走生产 runner,告警真实落库,execution 记录真实写入。
+                  Unlike dry run: goes through the production runner. Alerts land in the DB, execution records are actually written.
                   <span className="mono">POST /api/v1/namespaces/{injectPipelineMeta.namespace}/pipelines/{injectPipelineMeta.name}/inject</span>
                 </div>
               </div>
             </div>
 
             <div className="inject-templates">
-              <label className="it-label">示例模板</label>
+              <label className="it-label">Template</label>
               <select
                 className="it-select"
                 defaultValue={0}
@@ -469,7 +469,7 @@ function PipelineEditor() {
               ) : (
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
               )}
-              {injecting ? '注入中…' : '执行注入'}
+              {injecting ? 'Injecting…' : 'Run Inject'}
             </button>
 
             {injectResult && <InjectResultCard result={injectResult} />}
