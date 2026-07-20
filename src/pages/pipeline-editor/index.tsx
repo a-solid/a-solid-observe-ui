@@ -166,8 +166,8 @@ function PipelineEditor() {
   const { data: versions = [] } = useVersions(namespace, isNew ? '' : pipelineName)
   const createMutation = useCreatePipeline(namespace)
 
-  // Find the latest version with definitionJson to pre-fill editor
-  const latestVersion = versions.length > 0 ? versions[0] : null
+  // Find the latest version (last in array — API returns chronological order)
+  const latestVersion = versions.length > 0 ? versions[versions.length - 1] : null
   const definition = useMemo(() => {
     if (!latestVersion?.definitionJson) return null
     try {

@@ -91,8 +91,8 @@ function Versions() {
   // Selected version object
   const selectedVersion = versionLabels.find((vl) => vl.label === selected)?.version
 
-  // Latest version for "b" side (newer)
-  const latestVersion = versions.length > 0 ? versions[0] : null
+  // Latest version for "b" side (last in array — API returns chronological order)
+  const latestVersion = versions.length > 0 ? versions[versions.length - 1] : null
 
   // Scripts from definitionJson (real data)
   const oldScript = getScript(selectedVersion)
