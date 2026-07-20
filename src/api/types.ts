@@ -149,3 +149,84 @@ export interface SaveVersionRequest {
 export interface PublishRequest {
   publishedBy?: string
 }
+
+// ── Page response ──
+
+export interface PageResponse<T> {
+  data: T[]
+  page: Page
+}
+
+// ── Alert ──
+
+export interface AlertDto {
+  id: number
+  namespace: string
+  pipelineId: number
+  pipelineVersion: number
+  executionId: number
+  fingerprint: string
+  severity: 'INFO' | 'WARNING' | 'CRITICAL'
+  labels: Record<string, string>
+  annotations: Record<string, string>
+  startsAt: string
+  lastSeenAt?: string
+  endsAt?: string
+  resolvedAt?: string
+  status: string
+  disposition?: string
+  dedupCount: number
+  ackNote?: string
+  ackBy?: string
+  ackAt?: string
+  traceId?: string
+  labelTeam?: string
+  labelApp?: string
+  labelLine?: string
+}
+
+export interface DispositionRequest {
+  note?: string
+  by: string
+}
+
+// ── Evidence ──
+
+export interface EvidenceDto {
+  id: number
+  alertId: number
+  namespace: string
+  pipelineId: number
+  pipelineVersion: number
+  executionId: number
+  nodeName: string
+  triggerEvent: string
+  traceId?: string
+  spanId?: string
+  capturedAt: string
+  truncated: boolean
+  emitSeq: number
+}
+
+// ── Execution ──
+
+export interface ExecutionDto {
+  id: number
+  namespace: string
+  pipelineId: number
+  pipelineVersion: number
+  triggerType: string
+  triggerEvent?: string
+  subscriptionId?: number
+  status: string
+  startedAt: string
+  endedAt?: string
+  durationMs: number
+  traceId?: string
+  createdAt: string
+  executionId?: number
+  nodeName?: string
+  errorType?: string
+  errorMessage?: string
+  stackTrace?: string
+}

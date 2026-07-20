@@ -3,18 +3,19 @@ import { Topbar } from '../../components/Topbar'
 import { Subtabs } from '../../components/Subtabs'
 import { ALERT_SUBTAB_ICONS } from '../../components/subtabIcons'
 import { JsonView } from '../../components/JsonView'
-import { useCountUp } from '../../lib/useCountUp'
-import { executions as initial, liveTemplates, type Execution, type TriggerType } from './mock'
+import { useNamespace } from '../../context/NamespaceContext'
+import { useExecutions } from '../../hooks/useExecutions'
+import type { ExecutionDto } from '../../api/types'
 import './executions.css'
 
-const TRIGGER_ICON: Record<TriggerType, ReactElement> = {
+const TRIGGER_ICON: Record<string, ReactElement> = {
   CDC: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0" transform="scale(0.85) translate(0 2)" /></svg>,
   CRON: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
   API: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
   DELAYED: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
   UNKNOWN: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" /></svg>,
 }
-const TRIGGER_CLS: Record<TriggerType, string> = { CDC: 'cdc', CRON: 'cron', API: 'api', DELAYED: 'cron', UNKNOWN: 'api' }
+const TRIGGER_CLS: Record<string, string> = { CDC: 'cdc', CRON: 'cron', API: 'api', DELAYED: 'cron', UNKNOWN: 'api' }
 
 const ICON_CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l5 5L20 7" /></svg>
 const ICON_BOLT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
@@ -27,20 +28,31 @@ const SUBTABS = [
   { to: '/executions/failed', label: 'Failed Executions', icon: ALERT_SUBTAB_ICONS.failed },
 ]
 
-function ExecCard({ e, index }: { e: Execution; index: number }) {
+function ExecCard({ e, index }: { e: ExecutionDto; index: number }) {
   const [expanded, setExpanded] = useState(false)
   const [barW, setBarW] = useState(0)
   const isShort = e.status === 'SHORT_CIRCUITED'
-  const execColor = isShort ? 'var(--exec-short)' : 'var(--exec-success)'
-  const badgeCls = isShort ? 'result-short' : 'result-success'
-  const badgeIcon = isShort ? ICON_BOLT : ICON_CHECK
+  const execColor = isShort ? 'var(--exec-short)' : e.status === 'FAILED' ? 'var(--exec-failed)' : 'var(--exec-success)'
+  const badgeCls = isShort ? 'result-short' : e.status === 'FAILED' ? 'result-fail' : 'result-success'
+  const badgeIcon = isShort ? ICON_BOLT : e.status === 'FAILED' ? ICON_BOLT : ICON_CHECK
+
+  const durationPct = Math.min(100, Math.max(5, (e.durationMs ?? 0) / 2))
 
   useEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const delay = reduce ? 0 : 80 + Math.min(index * 30, 360)
-    const t = window.setTimeout(() => setBarW(e.durationPct), delay)
+    const t = window.setTimeout(() => setBarW(durationPct), delay)
     return () => window.clearTimeout(t)
-  }, [e.durationPct, index])
+  }, [durationPct, index])
+
+  const started = e.startedAt ? new Date(e.startedAt) : null
+  const timeStr = started ? `${String(started.getHours()).padStart(2, '0')}:${String(started.getMinutes()).padStart(2, '0')}:${String(started.getSeconds()).padStart(2, '0')}` : '--'
+  const relStr = started ? formatRel(started) : '--'
+
+  let triggerEvent: Record<string, unknown> | undefined
+  if (e.triggerEvent) {
+    try { triggerEvent = JSON.parse(e.triggerEvent) } catch { /* ignore */ }
+  }
 
   return (
     <div className="exec-card" style={{ animationDelay: `${Math.min(index * 30, 360)}ms` }}>
@@ -49,24 +61,22 @@ function ExecCard({ e, index }: { e: Execution; index: number }) {
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="exec-time">
-          <div className="exec-time-stamp">{e.startedAt}</div>
-          <div className="exec-time-rel">{e.rel}</div>
+          <div className="exec-time-stamp">{timeStr}</div>
+          <div className="exec-time-rel">{relStr}</div>
         </div>
         <div className="exec-trigger">
-          <div className={`trigger-icon ${TRIGGER_CLS[e.triggerType]}`} title={e.triggerType}>{TRIGGER_ICON[e.triggerType]}</div>
+          <div className={`trigger-icon ${TRIGGER_CLS[e.triggerType] ?? 'api'}`} title={e.triggerType}>{TRIGGER_ICON[e.triggerType] ?? TRIGGER_ICON.UNKNOWN}</div>
         </div>
         <div className="exec-pipeline">
-          <div className="exec-pipeline-name">{e.pipeline}</div>
-          <div className="exec-pipeline-meta">{e.triggerType} · {e.pipelineMeta}</div>
+          <div className="exec-pipeline-name">#{e.pipelineId} v{e.pipelineVersion}</div>
+          <div className="exec-pipeline-meta">{e.triggerType} · {e.namespace}</div>
         </div>
         <div className="exec-duration">
           <div className="duration-bar-wrap">
             <div className="duration-bar" style={{ width: `${barW}%`, background: execColor }} />
           </div>
           <div className="duration-meta">
-            <span>0ms</span>
             <span className="num">{e.durationMs}ms</span>
-            <span>200ms</span>
           </div>
         </div>
         <div className="exec-result">
@@ -82,7 +92,7 @@ function ExecCard({ e, index }: { e: Execution; index: number }) {
               triggerEvent
             </p>
             <div className="event-json">
-              <JsonView value={e.event} />
+              {triggerEvent ? <JsonView value={triggerEvent} /> : <span style={{ color: 'var(--color-text-muted)' }}>{e.triggerEvent ?? '--'}</span>}
             </div>
           </div>
           <div>
@@ -95,9 +105,11 @@ function ExecCard({ e, index }: { e: Execution; index: number }) {
               <span className="path-mini-arrow">→</span>
               <span className="path-mini-node">subscription</span>
               <span className="path-mini-arrow">→</span>
-              <span className="path-mini-node check">check</span>
+              <span className="path-mini-node check">pipeline</span>
               {isShort ? (
                 <span className="path-mini-check">✓ Condition not matched</span>
+              ) : e.status === 'FAILED' ? (
+                <span className="path-mini-check" style={{ color: 'var(--exec-failed)' }}>✗ Failed · {e.errorType}</span>
               ) : (
                 <>
                   <span className="path-mini-arrow">→</span>
@@ -106,11 +118,14 @@ function ExecCard({ e, index }: { e: Execution; index: number }) {
                 </>
               )}
             </div>
-            <div className="exec-detail-stat"><span className="lbl">executionId</span><span className="val">exec_{e.id}_20260719</span></div>
+            <div className="exec-detail-stat"><span className="lbl">executionId</span><span className="val">{e.executionId ?? e.id}</span></div>
             <div className="exec-detail-stat"><span className="lbl">triggerType</span><span className="val">{e.triggerType}</span></div>
             <div className="exec-detail-stat"><span className="lbl">durationMs</span><span className="val">{e.durationMs}</span></div>
             <div className="exec-detail-stat"><span className="lbl">status</span><span className="val" style={{ color: execColor }}>{e.status}</span></div>
-            <div className="exec-detail-stat"><span className="lbl">startedAt</span><span className="val">2026-07-19T{e.startedAt}Z</span></div>
+            <div className="exec-detail-stat"><span className="lbl">startedAt</span><span className="val">{e.startedAt}</span></div>
+            {e.errorMessage && (
+              <div className="exec-detail-stat"><span className="lbl">error</span><span className="val" style={{ color: 'var(--exec-failed)' }}>{e.errorMessage}</span></div>
+            )}
           </div>
         </div>
       </div>
@@ -118,37 +133,35 @@ function ExecCard({ e, index }: { e: Execution; index: number }) {
   )
 }
 
-function StatNum({ target }: { target: number }) {
-  const v = useCountUp(target, 700)
-  return <span className="num">{v.toLocaleString()}</span>
+function formatRel(d: Date): string {
+  const diff = Date.now() - d.getTime()
+  const mins = Math.round(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins} min ago`
+  return `${Math.round(mins / 60)} hours ago`
 }
 
 function Executions() {
-  const [resultFilter, setResultFilter] = useState<'all' | 'SUCCESS' | 'SHORT_CIRCUITED'>('all')
-  const [range, setRange] = useState<'1h' | '24h' | '7d'>('24h')
-  const [list, setList] = useState<Execution[]>(initial)
+  const { namespace } = useNamespace()
+  const [resultFilter, setResultFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
-  const filtered = list.filter((e) => resultFilter === 'all' || e.status === resultFilter)
+  const params = {
+    namespace,
+    ...(resultFilter !== 'all' ? { status: resultFilter } : {}),
+    page,
+    size: pageSize,
+  }
 
-  // Live: prepend a new execution every 10s (respects reduced-motion).
-  useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce) return
-    let idx = 0
-    const timer = window.setInterval(() => {
-      const t = liveTemplates[idx % liveTemplates.length]
-      idx++
-      const now = new Date()
-      const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-      const e: Execution = { id: `live_${Date.now()}`, startedAt: time, rel: 'Just now', ...t }
-      if (resultFilter !== 'all' && e.status !== resultFilter) return
-      setList((prev) => [e, ...prev])
-    }, 10000)
-    return () => window.clearInterval(timer)
-  }, [resultFilter])
+  const { data, isLoading, isError, refetch } = useExecutions(params)
+  const executions = data?.data ?? []
+  const pageInfo = data?.page
+  const totalPages = pageInfo ? Math.ceil(pageInfo.total / pageInfo.size) : 1
+  const total = pageInfo?.total ?? 0
 
-  const resultPillCls = (r: 'all' | 'SUCCESS' | 'SHORT_CIRCUITED') =>
-    `opt-pill${resultFilter === r ? ` active ${r === 'all' ? 'primary' : r === 'SUCCESS' ? 'success' : 'short'}` : ''}`
+  const resultPillCls = (r: string) =>
+    `opt-pill${resultFilter === r ? ` active ${r === 'all' ? 'primary' : r === 'SUCCESS' ? 'success' : r === 'FAILED' ? 'fail' : 'short'}` : ''}`
 
   return (
     <>
@@ -159,89 +172,57 @@ function Executions() {
         <div className="page-header">
           <div>
             <h1 className="page-title">Execution History</h1>
-            <p className="page-subtitle">Last <span className="num">24h</span> · <span className="num">1,284</span> executions · real-time feed</p>
-          </div>
-        </div>
-
-        <div className="stats-row">
-          <div className="stat-card success">
-            <div className="stat-head">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12l5 5L20 7" /></svg>
-              SUCCESS
-            </div>
-            <div className="stat-num"><StatNum target={1102} /></div>
-            <div className="stat-meta">Alert triggered · share 85.8%</div>
-          </div>
-          <div className="stat-card short">
-            <div className="stat-head">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-              SHORT_CIRCUITED
-            </div>
-            <div className="stat-num"><StatNum target={182} /></div>
-            <div className="stat-meta">Condition not matched · share 14.2%</div>
-          </div>
-          <div className="stat-card avg">
-            <div className="stat-head">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              Avg Duration
-            </div>
-            <div className="stat-num"><StatNum target={48} /><span className="unit">ms</span></div>
-            <div className="stat-meta">P95: <span className="num">112ms</span> · P99: <span className="num">186ms</span></div>
-          </div>
-          <div className="stat-card throughput">
-            <div className="stat-head">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h4l3-9 4 18 3-9h4" /></svg>
-              Throughput · 5min
-            </div>
-            <div className="stat-num"><StatNum target={142} /><span className="unit">/min</span></div>
-            <div className="stat-meta">Peak <span className="num">218/min</span> · 14:30</div>
+            <p className="page-subtitle"><span className="num">{total}</span> executions total</p>
           </div>
         </div>
 
         <div className="filters">
           <div className="filter-group">
-            <span className="filter-label">Rule</span>
-            <button className="pipeline-select">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7" /></svg>
-              <span>All pipelines</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
-            </button>
-          </div>
-
-          <div className="filter-group">
             <span className="filter-label">Result</span>
             <div className="pill-group">
-              <button className={resultPillCls('all')} onClick={() => setResultFilter('all')}>All</button>
-              <button className={resultPillCls('SUCCESS')} onClick={() => setResultFilter('SUCCESS')}>
+              <button className={resultPillCls('all')} onClick={() => { setResultFilter('all'); setPage(1) }}>All</button>
+              <button className={resultPillCls('SUCCESS')} onClick={() => { setResultFilter('SUCCESS'); setPage(1) }}>
                 {ICON_CHECK} SUCCESS
               </button>
-              <button className={resultPillCls('SHORT_CIRCUITED')} onClick={() => setResultFilter('SHORT_CIRCUITED')}>
+              <button className={resultPillCls('SHORT_CIRCUITED')} onClick={() => { setResultFilter('SHORT_CIRCUITED'); setPage(1) }}>
                 {ICON_BOLT} SHORT
+              </button>
+              <button className={resultPillCls('FAILED')} onClick={() => { setResultFilter('FAILED'); setPage(1) }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 22h20L12 2z" /></svg> FAILED
               </button>
             </div>
           </div>
 
           <div className="filter-spacer" />
+        </div>
 
-          <div className="filter-group">
-            <span className="filter-label">Time</span>
-            <div className="range-group">
-              {(['1h', '24h', '7d'] as const).map((r) => (
-                <button key={r} className={`opt-pill${range === r ? ' active primary' : ''}`} onClick={() => setRange(r)}>{r}</button>
-              ))}
-            </div>
+        {isLoading && <div className="list-footer"><span className="num">Loading executions...</span></div>}
+
+        {isError && (
+          <div className="list-footer">
+            <span className="num" style={{ color: 'var(--severity-critical)' }}>Failed to load.</span>{' '}
+            <button className="btn btn-ghost" onClick={() => refetch()}>Retry</button>
           </div>
-        </div>
+        )}
 
-        <div className="exec-list">
-          {filtered.map((e, i) => (
-            <ExecCard key={e.id} e={e} index={i} />
-          ))}
-        </div>
+        {!isLoading && !isError && (
+          <>
+            <div className="exec-list">
+              {executions.map((e, i) => (
+                <ExecCard key={e.id} e={e} index={i} />
+              ))}
+              {executions.length === 0 && (
+                <div className="list-footer">No executions found.</div>
+              )}
+            </div>
 
-        <div className="list-footer">
-          Showing <span className="num">{filtered.length}</span> · scroll to load more
-        </div>
+            <div className="list-footer" style={{ display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
+              <button className="btn btn-ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</button>
+              <span className="num">Page {page} / {totalPages}</span>
+              <button className="btn btn-ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</button>
+            </div>
+          </>
+        )}
       </main>
     </>
   )

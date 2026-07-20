@@ -1,10 +1,12 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Topbar } from '../../components/Topbar'
 import { Subtabs } from '../../components/Subtabs'
 import { ALERT_SUBTAB_ICONS } from '../../components/subtabIcons'
 import { JsonView } from '../../components/JsonView'
-import { errorGroups, failures, type FailCardData, type Failure } from './mock'
+import { useNamespace } from '../../context/NamespaceContext'
+import { useExecutions } from '../../hooks/useExecutions'
+import type { ExecutionDto } from '../../api/types'
 import './failed.css'
 
 const ICON_RETRY = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
@@ -18,32 +20,39 @@ const SUBTABS = [
   { to: '/executions/failed', label: 'Failed Executions', icon: ALERT_SUBTAB_ICONS.failed },
 ]
 
-function FailCard({ card, selected, onSelect }: { card: FailCardData; selected: boolean; onSelect: () => void }) {
-  const hasDiag = card.id in failures
+interface FailGroup {
+  type: string
+  count: number
+  items: ExecutionDto[]
+}
+
+function FailCard({ e, selected, onSelect }: { e: ExecutionDto; selected: boolean; onSelect: () => void }) {
+  const errorTypeShort = e.errorType ?? 'Unknown'
+  const nodeName = e.nodeName ?? '?'
+  const pipeline = `#${e.pipelineId} v${e.pipelineVersion}`
+
   return (
     <div
-      className={`fail-card ${card.status}${selected ? ' selected' : ''}`}
-      onClick={() => hasDiag && onSelect()}
+      className={`fail-card pending${selected ? ' selected' : ''}`}
+      onClick={onSelect}
     >
       <div className="fail-card-head">
-        <div className="fail-error-type">{card.errorTypeShort}</div>
-        <span className="fail-status">{card.status === 'pending' ? 'PENDING' : card.status === 'resolved' ? 'RESOLVED' : 'IGNORED'}</span>
+        <div className="fail-error-type">{errorTypeShort} @ {nodeName}</div>
+        <span className="fail-status">FAILED</span>
       </div>
       <div className="fail-card-title">
-        {card.pipelineTitle}
-        <span className="fail-node-tag">node: {card.nodeName}</span>
+        {pipeline}
+        <span className="fail-node-tag">node: {nodeName}</span>
       </div>
       <div className="fail-card-meta">
-        <div className="fail-card-meta-row">pipeline: <strong>{card.pipeline}</strong></div>
-        <div className="fail-card-meta-row">createdAt: <strong>{card.createdAt}</strong> · <span style={{ color: card.status === 'pending' ? 'var(--fail-pending)' : undefined }}>{card.rel}</span></div>
+        <div className="fail-card-meta-row">pipeline: <strong>#{e.pipelineId}</strong></div>
+        <div className="fail-card-meta-row">createdAt: <strong>{e.createdAt?.substring(0, 19) ?? '--'}</strong></div>
       </div>
     </div>
   )
 }
 
-/** Highlight quoted strings + null/timeout/missing/failed keywords in the error message. */
 function HighlightedError({ msg }: { msg: string }) {
-  // Split on quoted segments first, then within non-quoted segments highlight keywords.
   const parts = msg.split(/("[^"]+")/g)
   return (
     <>
@@ -51,7 +60,6 @@ function HighlightedError({ msg }: { msg: string }) {
         if (part.startsWith('"')) {
           return <span key={i} className="highlight">{part}</span>
         }
-        // highlight keywords
         const kw = part.split(/\b(null|timeout|missing|failed)\b/gi)
         return (
           <Fragment key={i}>
@@ -69,9 +77,7 @@ function HighlightedError({ msg }: { msg: string }) {
   )
 }
 
-/** Parse a Java stack line into colored spans (class / method / file:line). */
 function StackLine({ line, first }: { line: string; first: boolean }) {
-  // Patterns: "at com.foo.Bar.baz(File.java:42)" or "Caused by: ..."
   if (line.startsWith('Caused by')) {
     return <span className="st-at">{line}</span>
   }
@@ -108,35 +114,31 @@ function OscStage({ x, label, name, tag, state, markerX }: {
   )
 }
 
-function DiagPanel({ f }: { f: Failure }) {
+function DiagPanel({ e }: { e: ExecutionDto }) {
   const [stackOpen, setStackOpen] = useState(false)
-  const stages = ['input', 'process', 'output'] as const
-  const failIdx = stages.indexOf(f.failStage)
+  const failIdx = 1 // default to process
 
-  const inputState = (i: number): 'fail' | 'ok' | 'muted' =>
-    failIdx === i ? 'fail' : failIdx > i ? 'ok' : 'muted'
-  const tagFor = (i: number): string => {
-    if (failIdx === i) return '✗ Crashed here'
-    if (failIdx < i) {
-      if (i === 1) return '— Not reached'
-      if (i === 2) return failIdx < 2 ? '— Not reached' : '✓ OK'
-      return '✓ Entered OK'
-    }
-    return i === 1 ? '✓ Processed OK' : '✓ OK'
+  const stackLines = e.stackTrace
+    ? e.stackTrace.split('\n').filter(Boolean)
+    : []
+
+  let triggerEvent: Record<string, unknown> | undefined
+  if (e.triggerEvent) {
+    try { triggerEvent = JSON.parse(e.triggerEvent) } catch { /* ignore */ }
   }
 
   return (
-    <section className="diag-pane" key={f.id}>
+    <section className="diag-pane">
       <div className="diag-head">
         <div className="diag-title-block">
-          <span className="diag-eyebrow">Node Diagnostics · {f.nodeName}</span>
+          <span className="diag-eyebrow">Node Diagnostics · {e.nodeName ?? 'unknown'}</span>
           <h2 className="diag-title">
-            {f.pipeline}
-            <span className="diag-error-tag">{ICON_ALERT}{f.errorType}</span>
+            #{e.pipelineId} v{e.pipelineVersion}
+            <span className="diag-error-tag">{ICON_ALERT}{e.errorType ?? 'Unknown'}</span>
           </h2>
-          <span className="diag-sub">Failed at <span className="mono">{f.failedAt}</span> · <span className="mono">{f.isoCreatedAt}</span></span>
+          <span className="diag-sub">Failed at <span className="mono">{e.startedAt}</span> · <span className="mono">{e.createdAt}</span></span>
         </div>
-        <button className="btn-retry" onClick={() => toast.success(`Retry submitted · ${f.pipeline}`)}>
+        <button className="btn-retry" onClick={() => toast.success(`Retry submitted · #${e.pipelineId}`)}>
           {ICON_RETRY}One-click Retry
         </button>
       </div>
@@ -152,19 +154,11 @@ function DiagPanel({ f }: { f: Failure }) {
               <path className="osc-wave" d="M 0 110 Q 20 100 40 110 T 80 110 T 120 110 T 160 110 T 200 110 T 240 110 T 280 110 T 320 110 T 360 110 T 400 110 T 440 110 T 480 110 T 520 110 T 560 110 T 600 110 T 640 110 T 680 110 T 720 110 T 760 110 T 800 110 T 840 110 T 880 110" />
             </g>
             <path className="osc-arrow" d="M 200 110 L 310 110" />
-            <path className="osc-arrow" d="M 530 110 L 650 110" stroke={failIdx > 0 ? 'rgba(148,163,184,0.4)' : 'rgba(220,38,38,0.5)'} />
+            <path className="osc-arrow" d="M 530 110 L 650 110" />
 
-            <OscStage x={60} state={inputState(0)} markerX={125}
-              label="INPUT" name="triggerEvent"
-              tag={failIdx === 0 ? '✗ Crashed here' : '✓ Entered OK'} />
-            <OscStage x={320} state={inputState(1)} markerX={420}
-              label={failIdx < 1 ? 'NODE · Skipped' : 'NODE · Processing'}
-              name={f.nodeName}
-              tag={tagFor(1)} />
-            <OscStage x={660} state={inputState(2)} markerX={725}
-              label={failIdx < 2 ? 'OUTPUT · Skipped' : 'OUTPUT · Sending'}
-              name="emit alert"
-              tag={tagFor(2)} />
+            <OscStage x={60} state="ok" label="INPUT" name="triggerEvent" tag="✓ Entered OK" />
+            <OscStage x={320} state="fail" markerX={420} label="NODE · Processing" name={e.nodeName ?? '?'} tag="✗ Crashed here" />
+            <OscStage x={660} state="muted" label="OUTPUT · Skipped" name="emit alert" tag="— Not reached" />
 
             <line x1="40" y1="180" x2="810" y2="180" stroke="rgba(148,163,184,0.3)" strokeWidth="1" />
             <text x="125" y="200" fontFamily="Fira Code" fontSize="10" fill="#64748B" textAnchor="middle">t₀</text>
@@ -177,9 +171,11 @@ function DiagPanel({ f }: { f: Failure }) {
       <div className="error-msg-block">
         <p className="error-msg-title">
           {ICON_ALERT}
-          ERROR MESSAGE · {f.errorType}
+          ERROR MESSAGE · {e.errorType ?? 'Unknown'}
         </p>
-        <div className="error-msg-text"><HighlightedError msg={f.errorMessage} /></div>
+        <div className="error-msg-text">
+          <HighlightedError msg={e.errorMessage ?? 'No error message'} />
+        </div>
       </div>
 
       <div>
@@ -189,29 +185,55 @@ function DiagPanel({ f }: { f: Failure }) {
         </p>
         <div className="oscilloscope" style={{ padding: 14 }}>
           <pre style={{ margin: 0, fontFamily: "'Fira Code',monospace", fontSize: 12, lineHeight: 1.65, color: '#CBD5E1' }}>
-            <JsonView value={f.inputPreview} />
+            {triggerEvent ? <JsonView value={triggerEvent} /> : <span style={{ color: 'var(--color-text-muted)' }}>{e.triggerEvent ?? '--'}</span>}
           </pre>
         </div>
       </div>
 
-      <div>
-        <button className={`stack-toggle${stackOpen ? ' open' : ''}`} onClick={() => setStackOpen((v) => !v)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
-          Expand stackTrace
-        </button>
-        <div className={`stack-trace${stackOpen ? ' open' : ''}`}>
-          {f.stack.map((line, i) => (
-            <StackLine key={i} line={line} first={i === 0} />
-          ))}
+      {stackLines.length > 0 && (
+        <div>
+          <button className={`stack-toggle${stackOpen ? ' open' : ''}`} onClick={() => setStackOpen((v) => !v)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
+            Expand stackTrace
+          </button>
+          <div className={`stack-trace${stackOpen ? ' open' : ''}`}>
+            {stackLines.map((line, i) => (
+              <StackLine key={i} line={line} first={i === 0} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }
 
 function Failed() {
-  const [selectedId, setSelectedId] = useState('f1')
-  const selected = failures[selectedId]
+  const { namespace } = useNamespace()
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+
+  const { data, isLoading, isError, refetch } = useExecutions({
+    namespace,
+    status: 'FAILED',
+    page,
+    size: 50,
+  })
+
+  const executions = data?.data ?? []
+  const pageInfo = data?.page
+  const total = pageInfo?.total ?? 0
+
+  const errorGroups = useMemo(() => {
+    const map: Record<string, ExecutionDto[]> = {}
+    executions.forEach((e) => {
+      const key = e.errorType ?? 'Unknown'
+      if (!map[key]) map[key] = []
+      map[key].push(e)
+    })
+    return Object.entries(map).map(([type, items]) => ({ type, count: items.length, items }))
+  }, [executions])
+
+  const selected = executions.find((e) => e.id === selectedId)
 
   return (
     <>
@@ -223,35 +245,47 @@ function Failed() {
           <div>
             <h1 className="page-title">Failed Executions · Node Diagnostics</h1>
             <p className="page-subtitle">
-              Last <span className="num">24h</span> · <span className="num">7</span> failures ·{' '}
-              <span className="num" style={{ color: 'var(--fail-pending)', fontWeight: 600 }}>4</span> PENDING ·{' '}
-              <span className="num">3</span> resolved
+              <span className="num">{total}</span> failures total
             </p>
           </div>
         </div>
 
-        <div className="dual-pane">
-          <aside className="list-pane">
-            {errorGroups.map((g) => (
-              <div className="error-group" key={g.type}>
-                <div className="error-group-head">
-                  <span>{g.type}</span>
-                  <span className="error-group-count">{g.count}</span>
-                </div>
-                {g.cards.map((c) => (
-                  <FailCard
-                    key={c.id}
-                    card={c}
-                    selected={selectedId === c.id}
-                    onSelect={() => setSelectedId(c.id)}
-                  />
-                ))}
-              </div>
-            ))}
-          </aside>
+        {isLoading && <div className="list-footer"><span className="num">Loading...</span></div>}
 
-          {selected ? <DiagPanel f={selected} /> : <div className="diag-pane" />}
-        </div>
+        {isError && (
+          <div className="list-footer">
+            <span className="num" style={{ color: 'var(--severity-critical)' }}>Failed to load.</span>{' '}
+            <button className="btn btn-ghost" onClick={() => refetch()}>Retry</button>
+          </div>
+        )}
+
+        {!isLoading && !isError && (
+          <div className="dual-pane">
+            <aside className="list-pane">
+              {errorGroups.map((g) => (
+                <div className="error-group" key={g.type}>
+                  <div className="error-group-head">
+                    <span>{g.type}</span>
+                    <span className="error-group-count">{g.count}</span>
+                  </div>
+                  {g.items.map((e) => (
+                    <FailCard
+                      key={e.id}
+                      e={e}
+                      selected={selectedId === e.id}
+                      onSelect={() => setSelectedId(e.id)}
+                    />
+                  ))}
+                </div>
+              ))}
+              {executions.length === 0 && (
+                <div className="list-footer">No failed executions found.</div>
+              )}
+            </aside>
+
+            {selected ? <DiagPanel e={selected} /> : <div className="diag-pane" />}
+          </div>
+        )}
       </main>
     </>
   )

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react'
+import { useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
-import { useCountUp } from '../../lib/useCountUp'
-import { alerts as initialAlerts, incoming, severityCounts, type Alert, type AlertStatus, type Severity } from './mock'
+import { useNamespace } from '../../context/NamespaceContext'
+import { useAlerts } from '../../hooks/useAlerts'
+import type { AlertDto } from '../../api/types'
 import './alerts.css'
 
-/* Inline icon SVGs (1:1 from b1-alerts.html) */
 const ICONS = {
   crit: (
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z" /></svg>
@@ -30,52 +30,62 @@ const ICONS = {
   ),
 }
 
+type Severity = 'CRITICAL' | 'WARNING' | 'INFO'
+
 const SEV_SHAPE: Record<Severity, ReactElement> = { CRITICAL: ICONS.crit, WARNING: ICONS.warn, INFO: ICONS.info }
 const SEV_CLASS: Record<Severity, string> = { CRITICAL: 'critical', WARNING: 'warning', INFO: 'info' }
-const SEV_SHAPE_CLASS: Record<Severity, string> = { CRITICAL: 'crit', WARNING: 'warn', INFO: '' }
 
 interface Filters {
   sev: 'all' | Severity
-  status: 'all' | 'ACTIVE' | 'EXPIRED'
+  status: 'all' | string
   team: 'all' | string
   q: string
 }
 
-// CSS class tokens retained (visual styling); 前端枚举值已是 ACTIVE/EXPIRED。
-const STATUS_VISUAL_CLASS: Record<AlertStatus, string> = { ACTIVE: 'firing', EXPIRED: 'resolved' }
+const STATUS_VISUAL_CLASS: Record<string, string> = { ACTIVE: 'firing', EXPIRED: 'resolved', FIRING: 'firing', RESOLVED: 'resolved' }
 
-function passes(a: Alert, f: Filters): boolean {
-  if (f.sev !== 'all' && a.severity !== f.sev) return false
-  if (f.status !== 'all' && a.status !== f.status) return false
-  if (f.team !== 'all' && a.team !== f.team) return false
-  if (f.q) {
-    const q = f.q.toLowerCase()
-    if (!a.fingerprint.toLowerCase().includes(q) && !a.entity.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q)) return false
+function formatTime(iso: string): string {
+  if (!iso) return '--'
+  try {
+    const d = new Date(iso)
+    const now = new Date()
+    const diffMin = Math.round((now.getTime() - d.getTime()) / 60000)
+    if (diffMin < 1) return 'Just now'
+    if (diffMin < 60) return `${diffMin} min ago`
+    if (diffMin < 1440) return `${Math.round(diffMin / 60)} hours ago`
+    return d.toLocaleDateString()
+  } catch {
+    return iso
   }
-  return true
 }
 
-function AlertCard({ a }: { a: Alert }) {
-  const time = a.status === 'EXPIRED' ? (a.endsAt || a.lastSeenAt || a.startedAt) : a.startedAt
+function AlertCard({ a }: { a: AlertDto }) {
+  const sev = a.severity as Severity
+  const statusCls = STATUS_VISUAL_CLASS[a.status] ?? 'firing'
+  const entity = a.labels?.app ?? a.labelApp ?? '--'
+  const description = a.annotations?.summary ?? a.annotations?.description ?? 'No description'
+  const teamLabel = a.labelTeam ?? a.labels?.team ?? '--'
+  const time = a.status === 'EXPIRED' ? (a.endsAt || a.lastSeenAt || a.startsAt) : a.startsAt
+
   return (
     <Link
       to={`/alerts/${a.id}`}
-      className={`alert-card ${SEV_CLASS[a.severity]} ${STATUS_VISUAL_CLASS[a.status]}${a.new ? ' new' : ''}`}
+      className={`alert-card ${SEV_CLASS[sev] ?? 'info'} ${statusCls}`}
     >
       <div className="alert-bar" />
       <div className="alert-sev-icon">
-        <div className={`sev-shape ${SEV_SHAPE_CLASS[a.severity]}`}>{SEV_SHAPE[a.severity]}</div>
+        <div className="sev-shape">{SEV_SHAPE[sev] ?? SEV_SHAPE.INFO}</div>
       </div>
       <div className="alert-body">
         <div className="alert-title-row">
           <span className="alert-fp">{a.fingerprint}</span>
-          <span className="pipeline-tag">{ICONS.pipeline}{a.pipeline}</span>
-          <span className="team-tag">{ICONS.users}{a.teamLabel}</span>
+          <span className="pipeline-tag">{ICONS.pipeline}#{a.pipelineId}</span>
+          <span className="team-tag">{ICONS.users}{teamLabel}</span>
         </div>
-        <div className="alert-entity">labels.entity = <strong>"{a.entity}"</strong></div>
-        <div className="alert-desc">{a.description}</div>
+        <div className="alert-entity">labels.app = <strong>"{entity}"</strong></div>
+        <div className="alert-desc">{description}</div>
         <div className="alert-meta">
-          <span className="alert-meta-item">{ICONS.clock}<strong>{time}</strong></span>
+          <span className="alert-meta-item">{ICONS.clock}<strong>{formatTime(time)}</strong></span>
           {a.dedupCount > 0 && (
             <span className="alert-meta-item dedup">{ICONS.dedup}dedupCount = <span className="num">{a.dedupCount}</span></span>
           )}
@@ -91,122 +101,97 @@ function AlertCard({ a }: { a: Alert }) {
         </div>
       </div>
       <div className="alert-right">
-        <span className={`status-badge ${STATUS_VISUAL_CLASS[a.status]}`}>{a.status}</span>
-        <span className="alert-time">startsAt <strong>{a.startedAt}</strong></span>
+        <span className={`status-badge ${statusCls}`}>{a.status}</span>
+        <span className="alert-time">startsAt <strong>{formatTime(a.startsAt)}</strong></span>
       </div>
     </Link>
   )
 }
 
 function Alerts() {
+  const { namespace } = useNamespace()
   const [filters, setFilters] = useState<Filters>({ sev: 'all', status: 'all', team: 'all', q: '' })
-  const [list, setList] = useState<Alert[]>(initialAlerts)
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
-  const filtered = useMemo(() => {
-    const rank = (a: Alert) => {
-      const sevRank = a.severity === 'CRITICAL' ? 0 : a.severity === 'WARNING' ? 1 : 2
-      const stRank = a.status === 'ACTIVE' ? 0 : 1
-      return sevRank * 10 + stRank
-    }
-    return list.filter((a) => passes(a, filters)).sort((a, b) => rank(a) - rank(b))
-  }, [list, filters])
-
-  // Simulate live incoming alerts (respects reduced-motion).
-  useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce) return
-    let idx = 0
-    const timer = window.setInterval(() => {
-      const next = incoming[idx % incoming.length]
-      idx++
-      const a: Alert = { ...next, id: `${next.id}_${Date.now()}`, new: true }
-      if (!passes(a, filters)) return
-      setList((prev) => {
-        const updated = [a, ...prev]
-        return updated.length > 24 ? updated.slice(0, 24) : updated
-      })
-    }, 12000)
-    return () => window.clearInterval(timer)
-  }, [filters])
-
-  const total = useCountUp(severityCounts.total, 700)
-  const firing = useCountUp(severityCounts.active, 700)
-  const resolved = useCountUp(severityCounts.expired, 700)
-
-  const sevCards: { cls: string; dataSev: 'all' | Severity; label: ReactNode; count: number; meta: string | null; icon: ReactNode | null; metaNode: ReactNode | null }[] = [
-    { cls: 'total', dataSev: 'all', label: 'All Alerts', count: severityCounts.total, meta: 'Last 24h', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>, metaNode: null },
-    { cls: 'critical', dataSev: 'CRITICAL', label: (<><span className="sev-icon">▲</span>CRITICAL</>), count: severityCounts.CRITICAL, meta: null, icon: null, metaNode: (<><span className="firing num">{severityCounts.criticalActive}</span> active · <span className="num">{severityCounts.criticalExpired}</span> expired</>) },
-    { cls: 'warning', dataSev: 'WARNING', label: (<><span className="sev-icon">△</span>WARNING</>), count: severityCounts.WARNING, meta: null, icon: null, metaNode: (<><span className="firing num">{severityCounts.warningActive}</span> active · <span className="num">{severityCounts.warningExpired}</span> expired</>) },
-    { cls: 'info', dataSev: 'INFO', label: (<><span className="sev-icon">○</span>INFO</>), count: severityCounts.INFO, meta: null, icon: null, metaNode: (<><span className="num">{severityCounts.infoActive}</span> active · <span className="num">{severityCounts.infoExpired}</span> expired</>) },
-  ]
-
-  const setSev = (sev: 'all' | Severity) => setFilters((f) => ({ ...f, sev }))
-
-  const isSevCardActive = (dataSev: string) => {
-    if (dataSev === 'all') return filters.sev === 'all'
-    return filters.sev === dataSev
+  const params = {
+    namespace,
+    ...(filters.sev !== 'all' ? { severity: filters.sev } : {}),
+    ...(filters.status !== 'all' ? { status: filters.status } : {}),
+    ...(filters.team !== 'all' ? { team: filters.team } : {}),
+    page,
+    size: pageSize,
   }
 
-  const connectionPill = (
-    <div className="connection-pill">
-      <span className="live-dot" />
-      <span>Real-Time · Connected</span>
-    </div>
-  )
+  const { data, isLoading, isError, refetch } = useAlerts(params)
+  const alerts = data?.data ?? []
+  const pageInfo = data?.page
+  const totalPages = pageInfo ? Math.ceil(pageInfo.total / pageInfo.size) : 1
+
+  const filtered = useMemo(() => {
+    let list = alerts
+    if (filters.q) {
+      const q = filters.q.toLowerCase()
+      list = list.filter((a) =>
+        a.fingerprint?.toLowerCase().includes(q) ||
+        a.labels?.app?.toLowerCase().includes(q) ||
+        (a.annotations?.summary ?? '').toLowerCase().includes(q),
+      )
+    }
+    return list
+  }, [alerts, filters.q])
+
+  const total = pageInfo?.total ?? 0
+
+  const sevCards: { cls: string; dataSev: 'all' | Severity; label: ReactNode; count: number; meta: string | null }[] = [
+    { cls: 'total', dataSev: 'all', label: 'All Alerts', count: total, meta: 'Server-side paginated' },
+    { cls: 'critical', dataSev: 'CRITICAL', label: <><span className="sev-icon">▲</span>CRITICAL</>, count: alerts.filter((a) => a.severity === 'CRITICAL').length, meta: 'This page' },
+    { cls: 'warning', dataSev: 'WARNING', label: <><span className="sev-icon">△</span>WARNING</>, count: alerts.filter((a) => a.severity === 'WARNING').length, meta: 'This page' },
+    { cls: 'info', dataSev: 'INFO', label: <><span className="sev-icon">○</span>INFO</>, count: alerts.filter((a) => a.severity === 'INFO').length, meta: 'This page' },
+  ]
+
+  const setSev = (sev: 'all' | Severity) => { setFilters((f) => ({ ...f, sev })); setPage(1) }
+
+  const teams = ['payment', 'risk', 'ops']
 
   return (
     <>
-      <Topbar rightExtra={connectionPill} />
+      <Topbar />
 
       <main className="page">
         <div className="page-header">
           <div>
             <h1 className="page-title">Alerts</h1>
             <p className="page-subtitle">
-              <span className="num">{total}</span> alerts · <span className="num">{firing}</span> ACTIVE · <span className="num">{resolved}</span> EXPIRED
+              <span className="num">{total}</span> alerts total
             </p>
           </div>
         </div>
 
-        {/* Severity overview */}
         <div className="severity-overview">
           {sevCards.map((c) => (
             <div
               key={c.dataSev}
-              className={`sev-card ${c.cls}${isSevCardActive(c.dataSev) ? ' active' : ''}`}
+              className={`sev-card ${c.cls}${filters.sev === c.dataSev || (c.dataSev === 'all' && filters.sev === 'all') ? ' active' : ''}`}
               onClick={() => setSev(c.dataSev === 'all' ? 'all' : c.dataSev)}
             >
               <div className="sev-card-head">
                 <div className="sev-label">{c.label}</div>
-                {c.icon}
               </div>
-              <SevCount target={c.count} />
-              <div className="sev-meta">{c.metaNode || c.meta}</div>
+              <div className="sev-count mono">{c.count}</div>
+              <div className="sev-meta">{c.meta}</div>
             </div>
           ))}
         </div>
 
-        {/* Filters */}
         <div className="filters">
           <div className="filter-group">
             <span className="filter-label">Severity</span>
             <div className="severity-picker">
-              <button
-                className={`sev-pill${filters.sev === 'all' ? ' active' : ''}`}
-                onClick={() => setSev('all')}
-              >All</button>
-              <button
-                className={`sev-pill crit${filters.sev === 'CRITICAL' ? ' active' : ''}`}
-                onClick={() => setSev('CRITICAL')}
-              ><span>▲</span> CRITICAL</button>
-              <button
-                className={`sev-pill warn${filters.sev === 'WARNING' ? ' active' : ''}`}
-                onClick={() => setSev('WARNING')}
-              ><span>△</span> WARNING</button>
-              <button
-                className={`sev-pill info${filters.sev === 'INFO' ? ' active' : ''}`}
-                onClick={() => setSev('INFO')}
-              ><span>○</span> INFO</button>
+              <button className={`sev-pill${filters.sev === 'all' ? ' active' : ''}`} onClick={() => setSev('all')}>All</button>
+              <button className={`sev-pill crit${filters.sev === 'CRITICAL' ? ' active' : ''}`} onClick={() => setSev('CRITICAL')}><span>▲</span> CRITICAL</button>
+              <button className={`sev-pill warn${filters.sev === 'WARNING' ? ' active' : ''}`} onClick={() => setSev('WARNING')}><span>△</span> WARNING</button>
+              <button className={`sev-pill info${filters.sev === 'INFO' ? ' active' : ''}`} onClick={() => setSev('INFO')}><span>○</span> INFO</button>
             </div>
           </div>
 
@@ -216,8 +201,8 @@ function Alerts() {
               {(['all', 'ACTIVE', 'EXPIRED'] as const).map((st) => (
                 <button
                   key={st}
-                  className={`opt-pill${filters.status === st.toLowerCase() || (filters.status === 'all' && st === 'all') ? ' active' : ''}`}
-                  onClick={() => setFilters((f) => ({ ...f, status: st === 'all' ? 'all' : st }))}
+                  className={`opt-pill${filters.status === st || (st === 'all' && filters.status === 'all') ? ' active' : ''}`}
+                  onClick={() => { setFilters((f) => ({ ...f, status: st === 'all' ? 'all' : st })); setPage(1) }}
                 >
                   {st === 'all' ? 'All' : st}
                 </button>
@@ -228,11 +213,11 @@ function Alerts() {
           <div className="filter-group">
             <span className="filter-label">Team</span>
             <div className="team-picker">
-              {([['all', 'All'], ['payment', 'Payment'], ['risk', 'Risk'], ['ops', 'Ops']] as const).map(([team, label]) => (
+              {([['all', 'All'], ...teams.map((t) => [t, t.charAt(0).toUpperCase() + t.slice(1)])] as const).map(([team, label]) => (
                 <button
                   key={team}
                   className={`opt-pill${filters.team === team ? ' active' : ''}`}
-                  onClick={() => setFilters((f) => ({ ...f, team }))}
+                  onClick={() => { setFilters((f) => ({ ...f, team })); setPage(1) }}
                 >
                   {label}
                 </button>
@@ -246,33 +231,47 @@ function Alerts() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
             <input
               type="text"
-              placeholder="Search fingerprint / entity…"
+              placeholder="Search fingerprint / app…"
               value={filters.q}
               onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value.trim() }))}
             />
           </div>
         </div>
 
-        {/* Alert list */}
-        <div className="alert-list">
-          {filtered.map((a, i) => (
-            <div key={a.id} style={{ animationDelay: `${Math.min(i * 35, 400)}ms` }}>
-              <AlertCard a={a} />
-            </div>
-          ))}
-        </div>
+        {isLoading && (
+          <div className="list-footer"><span className="num">Loading alerts...</span></div>
+        )}
 
-        <div className="list-footer">
-          Showing <span className="num">{filtered.length}</span> of <span className="num">{severityCounts.total}</span> · auto-load more
-        </div>
+        {isError && (
+          <div className="list-footer">
+            <span className="num" style={{ color: 'var(--severity-critical)' }}>Failed to load.</span>{' '}
+            <button className="btn btn-ghost" onClick={() => refetch()}>Retry</button>
+          </div>
+        )}
+
+        {!isLoading && !isError && (
+          <>
+            <div className="alert-list">
+              {filtered.map((a, i) => (
+                <div key={a.id} style={{ animationDelay: `${Math.min(i * 35, 400)}ms` }}>
+                  <AlertCard a={a} />
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="list-footer">No alerts match the filters.</div>
+              )}
+            </div>
+
+            <div className="list-footer" style={{ display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
+              <button className="btn btn-ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</button>
+              <span className="num">Page {page} / {totalPages}</span>
+              <button className="btn btn-ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</button>
+            </div>
+          </>
+        )}
       </main>
     </>
   )
-}
-
-function SevCount({ target }: { target: number }) {
-  const v = useCountUp(target, 700)
-  return <div className="sev-count mono">{v}</div>
 }
 
 export default Alerts
