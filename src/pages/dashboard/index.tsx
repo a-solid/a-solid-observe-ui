@@ -2,10 +2,10 @@ import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { Topbar } from '../../components/Topbar'
 import { useECharts } from '../../lib/useECharts'
 import { useCountUp } from '../../lib/useCountUp'
+import { useNamespace } from '../../context/NamespaceContext'
+import { useDashboard } from '../../hooks/useDashboard'
 import {
   sparkData,
-  topPipelines,
-  topFingerprints,
   trend,
 } from './mock'
 import {
@@ -15,6 +15,7 @@ import {
   buildTeamOption,
   buildSparkOption,
 } from './chartOptions'
+import type { DimensionCountDto, PipelineCountDto } from '../../api/types'
 import './dashboard.css'
 
 type PipelineNode = {
@@ -29,9 +30,9 @@ type PipelineNode = {
 const PIPELINE_NODES: PipelineNode[] = [
   {
     label: 'Source',
-    name: 'CDC · orders',
+    name: 'CDC / API / CRON',
     meta: 'Events',
-    metaNum: '1,284',
+    metaNum: '—',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -43,9 +44,9 @@ const PIPELINE_NODES: PipelineNode[] = [
   },
   {
     label: 'Subscription',
-    name: 'High-Amount Orders',
+    name: 'Event Subscriptions',
     meta: 'Matches',
-    metaNum: '312',
+    metaNum: '—',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 6h18" /><path d="M7 12h10" /><path d="M10 18h4" />
@@ -55,9 +56,9 @@ const PIPELINE_NODES: PipelineNode[] = [
   },
   {
     label: 'Rule',
-    name: 'check: high-amount-order',
+    name: 'Pipeline Rules',
     meta: 'Runs',
-    metaNum: '312',
+    metaNum: '—',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2v4" /><path d="m16.24 7.76 2.83-2.83" /><path d="M18 12h4" /><path d="m16.24 16.24 2.83 2.83" /><path d="M12 18v4" /><path d="m4.93 19.07 2.83-2.83" /><path d="M2 12h4" /><path d="m4.93 4.93 2.83 2.83" />
@@ -68,12 +69,7 @@ const PIPELINE_NODES: PipelineNode[] = [
   {
     label: 'Alert',
     name: 'Trigger Alert',
-    meta: (
-      <>
-        <span className="sev-tag critical">CRI 12</span>
-        <span className="sev-tag warning">WAR 47</span>
-      </>
-    ),
+    meta: <span>CRI / WAR / INFO</span>,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" />
@@ -123,7 +119,7 @@ function Kpi({
 }
 
 function TopList({ items }: { items: { name: string; count: number }[] }) {
-  const max = Math.max(...items.map((i) => i.count))
+  const max = Math.max(...items.map((i) => i.count), 1)
   return (
     <ul className="top-list">
       {items.map((it, i) => (
@@ -141,13 +137,16 @@ function TopList({ items }: { items: { name: string; count: number }[] }) {
 }
 
 function Dashboard() {
-  const heroEvents = useCountUp(1284)
-  const heroAlerts = useCountUp(47)
+  const { namespace } = useNamespace()
+  const { data: dash, isLoading } = useDashboard({ namespace, limit: 5 })
+
+  const heroEvents = useCountUp(dash?.eventsToday ?? 0)
+  const heroAlerts = useCountUp(dash?.alertsToday ?? 0)
 
   const trendChart = useECharts(buildTrendOption())
   const throughputChart = useECharts(buildThroughputOption())
 
-  // "Real-time" simulated — push a new trend point every 5s (respects reduced-motion).
+  // "Real-time" simulated trend (mock — timeseries API not yet integrated)
   const trendRef = useRef(trend)
   trendRef.current = trend
   useEffect(() => {
@@ -165,6 +164,13 @@ function Dashboard() {
     }, 5000)
     return () => window.clearInterval(timer)
   }, [trendChart.chart])
+
+  const topPipelines: { name: string; count: number }[] = (dash?.topPipelines ?? []).map(
+    (p: PipelineCountDto) => ({ name: p.pipelineName, count: p.count }),
+  )
+  const topFingerprints: { name: string; count: number }[] = (dash?.topFingerprints ?? []).map(
+    (d: DimensionCountDto) => ({ name: d.dimension, count: d.count }),
+  )
 
   const timeRange = (
     <div className="time-range" role="tablist" aria-label="Time range">
@@ -246,13 +252,36 @@ function Dashboard() {
 
         {/* KPI cards */}
         <section className="kpi-grid" aria-label="Today's key metrics">
-          <Kpi label="Today's Alerts" value={64} sub="+5 vs. yesterday" trend="up" trendLabel="▲ 8%" spark={sparkData.total} sparkColor="#1E40AF" />
-          <Kpi label="FIRING" value={8} variant="firing" sub="Action needed · 4 acked" trend="up" trendLabel="▲ 2" spark={sparkData.firing} sparkColor="#DC2626" />
-          <Kpi label="CRITICAL" value={12} variant="critical" sub="Most severe · all acked" trend="flat" trendLabel="— Flat" spark={sparkData.critical} sparkColor="#DC2626" />
-          <Kpi label="Execution Success Rate" value={98.4} unit="%" sub="1,204 succeeded / 21 failed" trend="down" trendLabel="▼ 0.3%" spark={sparkData.success} sparkColor="#16A34A" />
+          <Kpi
+            label="Today's Alerts"
+            value={dash?.alertsTotal ?? 0}
+            sub={`${dash?.alertsByStatus?.ACTIVE ?? 0} active / ${dash?.alertsByStatus?.EXPIRED ?? 0} expired`}
+            trend="up" trendLabel="Today" spark={sparkData.total} sparkColor="#1E40AF"
+          />
+          <Kpi
+            label="FIRING"
+            value={dash?.alertsByStatus?.ACTIVE ?? 0}
+            variant="firing"
+            sub="Action needed"
+            trend="up" trendLabel="Active" spark={sparkData.firing} sparkColor="#DC2626"
+          />
+          <Kpi
+            label="CRITICAL"
+            value={dash?.alertsBySeverity?.CRITICAL ?? 0}
+            variant="critical"
+            sub="Most severe"
+            trend="flat" trendLabel="— Flat" spark={sparkData.critical} sparkColor="#DC2626"
+          />
+          <Kpi
+            label="Execution Success Rate"
+            value={dash?.executionsSuccessRate ?? 0}
+            unit="%"
+            sub={`${dash?.executionsTotal ?? 0} total / ${dash?.executionsFailed ?? 0} failed`}
+            trend="down" trendLabel="Today" spark={sparkData.success} sparkColor="#16A34A"
+          />
         </section>
 
-        {/* Trend charts */}
+        {/* Trend charts (mock timeseries) */}
         <section className="grid-2">
           <article className="card">
             <header className="card-head">
@@ -290,20 +319,20 @@ function Dashboard() {
             <header className="card-head">
               <div>
                 <h3 className="card-title">Alerts by Severity</h3>
-                <p className="card-sub">64 total today</p>
+                <p className="card-sub">{dash?.alertsTotal ?? 0} total today</p>
               </div>
             </header>
-            <SeverityChart />
+            <SeverityChart data={dash?.alertsBySeverity ?? {}} />
           </article>
 
           <article className="card">
             <header className="card-head">
               <div>
                 <h3 className="card-title">Alerts by Team</h3>
-                <p className="card-sub">Top 5 teams</p>
+                <p className="card-sub">Top {(dash?.teamDist ?? []).length} teams</p>
               </div>
             </header>
-            <TeamChart />
+            <TeamChart data={dash?.teamDist ?? []} />
           </article>
         </section>
 
@@ -311,16 +340,24 @@ function Dashboard() {
         <section className="grid-2-equal">
           <article className="card">
             <header className="card-head">
-              <h3 className="card-title">Most Active Rules · Top 5</h3>
+              <h3 className="card-title">Most Active Rules · Top {topPipelines.length}</h3>
             </header>
-            <TopList items={topPipelines} />
+            {topPipelines.length > 0 ? (
+              <TopList items={topPipelines} />
+            ) : (
+              <div className="list-footer">{isLoading ? 'Loading...' : 'No data'}</div>
+            )}
           </article>
 
           <article className="card">
             <header className="card-head">
-              <h3 className="card-title">Most Frequent Alert Fingerprints · Top 5</h3>
+              <h3 className="card-title">Most Frequent Alert Fingerprints · Top {topFingerprints.length}</h3>
             </header>
-            <TopList items={topFingerprints} />
+            {topFingerprints.length > 0 ? (
+              <TopList items={topFingerprints} />
+            ) : (
+              <div className="list-footer">{isLoading ? 'Loading...' : 'No data'}</div>
+            )}
           </article>
         </section>
       </main>
@@ -328,13 +365,12 @@ function Dashboard() {
   )
 }
 
-// Separate components so each gets its own hook instance (hooks can't be called conditionally).
-function SeverityChart() {
-  const { ref } = useECharts(buildSeverityOption())
+function SeverityChart({ data }: { data: Record<string, number> }) {
+  const { ref } = useECharts(buildSeverityOption(data), [data])
   return <div className="chart" ref={ref} role="img" aria-label="Alert severity distribution pie chart" />
 }
-function TeamChart() {
-  const { ref } = useECharts(buildTeamOption())
+function TeamChart({ data }: { data: { dimension: string; count: number }[] }) {
+  const { ref } = useECharts(buildTeamOption(data), [data])
   return <div className="chart" ref={ref} role="img" aria-label="Alert team distribution horizontal bar chart" />
 }
 

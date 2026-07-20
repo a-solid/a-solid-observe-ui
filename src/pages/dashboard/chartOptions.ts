@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts'
-import { hours, teamDist, trend, throughput, stats } from './mock'
+import { hours, trend, throughput } from './mock'
 
 const tooltipBase = {
   backgroundColor: 'rgba(255,255,255,0.92)',
@@ -8,6 +8,8 @@ const tooltipBase = {
   textStyle: { color: '#0F172A', fontFamily: 'Fira Sans' },
   extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 8px 20px rgba(15,23,42,0.10); border-radius: 10px;',
 }
+
+// ── Trend & throughput are still mock (no timeseries API integration yet) ──
 
 export function buildTrendOption(t = trend): EChartsOption {
   return {
@@ -95,7 +97,15 @@ export function buildThroughputOption(): EChartsOption {
   }
 }
 
-export function buildSeverityOption(): EChartsOption {
+// ── Dynamic charts (fed from API) ──
+
+export function buildSeverityOption(alertsBySeverity: Record<string, number>): EChartsOption {
+  const total = Object.values(alertsBySeverity).reduce((a, b) => a + b, 0)
+  const data = [
+    { value: alertsBySeverity.CRITICAL ?? 0, name: 'CRITICAL', itemStyle: { color: '#DC2626' } },
+    { value: alertsBySeverity.WARNING ?? 0, name: 'WARNING', itemStyle: { color: '#D97706' } },
+    { value: alertsBySeverity.INFO ?? 0, name: 'INFO', itemStyle: { color: '#0EA5E9' } },
+  ]
   return {
     tooltip: tooltipBase,
     legend: {
@@ -111,23 +121,20 @@ export function buildSeverityOption(): EChartsOption {
       itemStyle: { borderColor: '#fff', borderWidth: 3 },
       label: {
         show: true, position: 'center',
-        formatter: '{c|64}\n{a|Today\'s Alerts}',
+        formatter: `{c|${total}}\n{a|Today's Alerts}`,
         rich: {
           c: { fontSize: 28, fontWeight: 700, color: '#0F172A', fontFamily: 'Fira Code', lineHeight: 32 },
           a: { fontSize: 11, color: '#64748B', fontFamily: 'Fira Sans' },
         },
       },
       emphasis: { label: { show: true } },
-      data: [
-        { value: 12, name: 'CRITICAL', itemStyle: { color: '#DC2626' } },
-        { value: 47, name: 'WARNING', itemStyle: { color: '#D97706' } },
-        { value: 5, name: 'INFO', itemStyle: { color: '#0EA5E9' } },
-      ],
+      data,
     }],
   }
 }
 
-export function buildTeamOption(): EChartsOption {
+export function buildTeamOption(teamDist: { dimension: string; count: number }[]): EChartsOption {
+  const sorted = [...teamDist].sort((a, b) => a.count - b.count)
   return {
     grid: { left: 60, right: 24, top: 8, bottom: 8 },
     tooltip: tooltipBase,
@@ -138,23 +145,17 @@ export function buildTeamOption(): EChartsOption {
     },
     yAxis: {
       type: 'category',
-      data: teamDist.map((t) => t.name).reverse(),
+      data: sorted.map((t) => t.dimension),
       axisLine: { lineStyle: { color: '#DBEAFE' } },
       axisLabel: { color: '#64748B', fontFamily: 'Fira Code', fontSize: 11 },
     },
     series: [{
       type: 'bar',
       barWidth: 14,
-      data: teamDist.map((t) => t.value).reverse(),
+      data: sorted.map((t) => t.count),
       itemStyle: {
         borderRadius: [0, 4, 4, 0],
-        color: {
-          type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
-          colorStops: [
-            { offset: 0, color: '#1E40AF' },
-            { offset: 1, color: '#3B82F6' },
-          ],
-        },
+        color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#1E40AF' }, { offset: 1, color: '#3B82F6' }] },
       },
       label: { show: true, position: 'right', color: '#1E40AF', fontFamily: 'Fira Code', fontSize: 11, fontWeight: 600 },
     }],
@@ -169,23 +170,13 @@ export function buildSparkOption(data: number[], color: string): EChartsOption {
     xAxis: { type: 'category', show: false, data: data.map((_, i) => i) },
     yAxis: { type: 'value', show: false },
     series: [{
-      type: 'line',
-      data,
-      smooth: true,
-      symbol: 'none',
+      type: 'line', data, smooth: true, symbol: 'none',
       lineStyle: { color, width: 2 },
       areaStyle: {
-        color: {
-          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: color + '40' },
-            { offset: 1, color: color + '00' },
-          ],
-        },
+        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: color + '40' }, { offset: 1, color: color + '00' }] },
       },
     }],
   }
 }
 
-// re-export for the realtime interval
-export { trend, stats }
+export { trend }

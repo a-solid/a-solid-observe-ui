@@ -230,3 +230,39 @@ export interface ExecutionDto {
   errorMessage?: string
   stackTrace?: string
 }
+
+// ── Dashboard Stats ──
+
+export interface DashboardStatsDto {
+  namespace: string
+  from?: string
+  to?: string
+  alertsBySeverity: Record<string, number>
+  alertsByStatus: Record<string, number>
+  alertsTotal: number
+  executionsByStatus: Record<string, number>
+  executionsTotal: number
+  executionsFailed: number
+  executionsSuccessRate: number
+  eventsToday: number
+  alertsToday: number
+  teamDist: DimensionCountDto[]
+  topPipelines: PipelineCountDto[]
+  topFingerprints: DimensionCountDto[]
+}
+
+export interface DimensionCountDto {
+  dimension: string
+  count: number
+}
+
+export interface PipelineCountDto {
+  pipelineId: number | string
+  pipelineName: string
+  count: number
+}
+
+export interface TimeseriesPointDto {
+  bucketStart: string
+  count: number
+}
