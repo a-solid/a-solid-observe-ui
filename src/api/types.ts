@@ -28,7 +28,7 @@ export interface UpdateNamespaceRequest {
 // ── Pipeline ──
 
 export interface PipelineDto {
-  id: number
+  id: number | string
   namespace: string
   labels: Record<string, string>
   name: string
@@ -50,7 +50,7 @@ export interface CreatePipelineRequest {
 // ── Subscription ──
 
 export interface SubscriptionFields {
-  pipelineIds: number[]
+  pipelineIds: (number | string)[]
   db?: string
   table?: string
   opTypes?: ('INSERT' | 'UPDATE' | 'DELETE')[]
@@ -73,7 +73,7 @@ export interface Condition {
 export interface SubscriptionDto {
   id: number
   namespace: string
-  pipelineIds: number[]
+  pipelineIds: (number | string)[]
   db?: string
   table?: string
   opTypes?: string[]

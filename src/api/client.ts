@@ -3,10 +3,36 @@ import { toast } from 'sonner'
 
 const baseURL = import.meta.env.VITE_API_BASE ?? '/'
 
+/**
+ * JSON.parse reviver: integers beyond JS safe range (2^53-1) are quoted in the
+ * raw response so they survive as strings.  Pattern: an integer with 16+ digits
+ * (or > MAX_SAFE_INTEGER) in a JSON value position gets string-wrapped.
+ */
+const BIG_INT_RE = /(?<=[:\s,\[])\s*(-?\d{16,})(?=\s*[,\]\}])/g
+
+function preserveBigInts(text: string): string {
+  return text.replace(BIG_INT_RE, (_, digits) => {
+    const n = BigInt(digits)
+    if (n > BigInt(Number.MAX_SAFE_INTEGER) || n < BigInt(Number.MIN_SAFE_INTEGER)) {
+      return `"${digits}"`
+    }
+    return digits
+  })
+}
+
 export const client = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30_000,
+  transformResponse: [
+    (data) => {
+      if (typeof data === 'string') {
+        // Guard large int64 values before native JSON.parse
+        return JSON.parse(preserveBigInts(data))
+      }
+      return data
+    },
+  ],
 })
 
 // Response interceptor: unwrap ApiResponse<T>.data / PageResponse<T>.data

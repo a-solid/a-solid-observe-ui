@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useNamespace } from '../../context/NamespaceContext'
@@ -20,7 +20,7 @@ const SOURCE_ICONS = {
 }
 
 interface PipelineBinding {
-  id: number
+  id: number | string
   name: string
   labels: Record<string, string>
 }
@@ -117,14 +117,27 @@ function SubscriptionEditor() {
   const [table, setTable] = useState('')
   const [subNameInput, setSubNameInput] = useState('')
   const [cronExpression, setCronExpression] = useState('')
+  const pickerRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
+  const [showPipelinePicker, setShowPipelinePicker] = useState(false)
+
+  useEffect(() => {
+    if (!showPipelinePicker) return
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPipelinePicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showPipelinePicker])
 
   // Init bindings from existing subscription
   useEffect(() => {
     if (existing?.pipelineIds) {
       const bound = existing.pipelineIds
-        .map((pid: number) => {
-          const p = pipelines.find((pl: PipelineDto) => pl.id === pid)
+        .map((pid) => {
+          const p = pipelines.find((pl: PipelineDto) => String(pl.id) === String(pid))
           return p ? { id: p.id, name: p.name, labels: p.labels ?? {} } : null
         })
         .filter(Boolean) as PipelineBinding[]
@@ -144,19 +157,18 @@ function SubscriptionEditor() {
     }
   }, [existing, pipelines])
 
-  const addBinding = () => {
-    const available = pipelines.filter((p: PipelineDto) => !bindings.find((b) => b.id === p.id))
-    if (available.length === 0) {
-      toast('All Rules are already bound')
-      return
-    }
-    const pick = available[0]
-    setBindings((prev) => [...prev, { id: pick.id, name: pick.name, labels: pick.labels ?? {} }])
-    toast.success(`Added ${pick.name}`)
+  const availablePipelines = pipelines.filter(
+    (p: PipelineDto) => !bindings.find((b) => String(b.id) === String(p.id)),
+  )
+
+  const selectBinding = (p: PipelineDto) => {
+    setBindings((prev) => [...prev, { id: p.id, name: p.name, labels: p.labels ?? {} }])
+    setShowPipelinePicker(false)
+    toast.success(`Added ${p.name}`)
   }
 
-  const removeBinding = (id: number) => {
-    setBindings((prev) => prev.filter((b) => b.id !== id))
+  const removeBinding = (id: number | string) => {
+    setBindings((prev) => prev.filter((b) => String(b.id) !== String(id)))
   }
 
   const buildFields = (): SubscriptionFields => ({
@@ -258,9 +270,29 @@ function SubscriptionEditor() {
               {bindings.map((b) => (
                 <BindingChip key={b.id} b={b} onRemove={() => removeBinding(b.id)} />
               ))}
-              <button className="add-binding" onClick={addBinding}>
-                {PLUS_ICON}Add Rule
-              </button>
+              <div style={{ position: 'relative' }} ref={pickerRef}>
+                <button
+                  className="add-binding"
+                  onClick={() => setShowPipelinePicker((v) => !v)}
+                  disabled={availablePipelines.length === 0}
+                >
+                  {PLUS_ICON}Add Rule
+                </button>
+                {showPipelinePicker && availablePipelines.length > 0 && (
+                  <div className="pipeline-picker-dropdown">
+                    {availablePipelines.map((p) => (
+                      <button
+                        key={p.id}
+                        className="pipeline-picker-item"
+                        onClick={() => selectBinding(p)}
+                      >
+                        <span className="picker-name">{p.name}</span>
+                        <span className="picker-meta">#{String(p.id).slice(-8)} · v{p.currentVersion}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="binding-meta">
               <span>Bound <span className="binding-count">{bindings.length}</span> Rules · Events will fan out</span>
@@ -312,12 +344,6 @@ function SubscriptionEditor() {
                 <div className="field-group full">
                   <label className="field-label">cronExpression</label>
                   <input className="field-input" value={cronExpression} onChange={(e) => setCronExpression(e.target.value)} placeholder="e.g. */10 * * * *" />
-                </div>
-              )}
-              {source === 'api' && (
-                <div className="field-group full">
-                  <label className="field-label">name</label>
-                  <input className="field-input" defaultValue={subscriptionName} readOnly />
                 </div>
               )}
             </div>
