@@ -1,7 +1,10 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { initialBindings, pipelinePool, type PipelineBinding } from './mock'
+import { useNamespace } from '../../context/NamespaceContext'
+import { useSubscription, useCreateSubscription, useUpdateSubscription } from '../../hooks/useSubscriptions'
+import { usePipelines } from '../../hooks/usePipelines'
+import type { SubscriptionFields, PipelineDto } from '../../api/types'
 import './subscriptionEditor.css'
 
 const CHIP_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="12" r="2.5" /><path d="M8.5 12h7" /></svg>
@@ -16,6 +19,12 @@ const SOURCE_ICONS = {
   api: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>,
 }
 
+interface PipelineBinding {
+  id: number
+  name: string
+  labels: Record<string, string>
+}
+
 function BindingChip({ b, onRemove }: { b: PipelineBinding; onRemove: () => void }) {
   const [removing, setRemoving] = useState(false)
   const handleRemove = () => {
@@ -25,8 +34,8 @@ function BindingChip({ b, onRemove }: { b: PipelineBinding; onRemove: () => void
   return (
     <span className={`binding-chip${removing ? ' removing' : ''}`} data-id={b.id}>
       <span className="chip-icon">{CHIP_ICON}</span>
-      {b.id}
-      <button className="chip-x" onClick={(e) => { e.stopPropagation(); handleRemove() }} aria-label={`Remove ${b.id}`}>
+      {b.name || `#${b.id}`}
+      <button className="chip-x" onClick={(e) => { e.stopPropagation(); handleRemove() }} aria-label={`Remove ${b.name || b.id}`}>
         {X_ICON}
       </button>
     </span>
@@ -35,7 +44,7 @@ function BindingChip({ b, onRemove }: { b: PipelineBinding; onRemove: () => void
 
 function ForkPipeline({ b, index }: { b: PipelineBinding; index: number }) {
   const [expanded, setExpanded] = useState(false)
-  const labelTags = Object.entries(b.labels)
+  const labelTags = Object.entries(b.labels ?? {})
   return (
     <div
       className={`fork-pipeline${expanded ? ' expanded' : ''}`}
@@ -46,10 +55,10 @@ function ForkPipeline({ b, index }: { b: PipelineBinding; index: number }) {
       <span className="fp-dot" />
       <div className="fp-main">
         <div className="fp-row-head">
-          <span className="fp-name">{b.id}</span>
+          <span className="fp-name">{b.name || `#${b.id}`}</span>
           <div className="fp-tools">
-            <span className="fp-groovy" title={`Groovy · ${b.groovyLines} lines`}>{GROOVY_ICON}Groovy · {b.groovyLines}</span>
-            <span className="fp-alert-out">{ALERT_ICON}{b.severity}</span>
+            <span className="fp-groovy" title="Groovy Rule">{GROOVY_ICON}Groovy</span>
+            <span className="fp-alert-out">{ALERT_ICON}Alert</span>
           </div>
         </div>
         <div className="fp-labels">
@@ -57,19 +66,12 @@ function ForkPipeline({ b, index }: { b: PipelineBinding; index: number }) {
             <span className="fp-label" key={k}><span className="lk">{k}</span><span className="lv">{v}</span></span>
           ))}
         </div>
-        <div className="fp-detail">
-          <div className="fp-row"><span>label</span><strong>{b.label}</strong></div>
-          <div className="fp-row"><span>match</span><strong>{b.cond}</strong></div>
-          <div className="fp-row"><span>scriptSource</span><strong className="fp-groovy-src">{b.groovy}</strong></div>
-          <div className="fp-row"><span>action</span><strong>RUN → Alert</strong></div>
-        </div>
       </div>
       <svg className="fp-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
     </div>
   )
 }
 
-/** Fork SVG branch paths generated from current bindings — 1:1 port of demo's renderBranchPaths(). */
 function BranchPaths({ bindings }: { bindings: PipelineBinding[] }) {
   const n = bindings.length
   if (n === 0) return null
@@ -97,24 +99,89 @@ function BranchPaths({ bindings }: { bindings: PipelineBinding[] }) {
 }
 
 function SubscriptionEditor() {
-  const [bindings, setBindings] = useState<PipelineBinding[]>(initialBindings)
+  const { id } = useParams<{ id: string }>()
+  const { namespace } = useNamespace()
+  const subscriptionName = id ?? ''
+
+  const { data: existing } = useSubscription(namespace, subscriptionName)
+  const { data: pipelines = [] } = usePipelines(namespace)
+  const createMutation = useCreateSubscription(namespace)
+  const updateMutation = useUpdateSubscription(namespace)
+
+  const [bindings, setBindings] = useState<PipelineBinding[]>([])
   const [source, setSource] = useState<'cdc' | 'cron' | 'api'>('cdc')
-  const [action, setAction] = useState<'RUN' | 'SCHEDULE' | 'CANCEL'>('RUN')
+  const [action, setAction] = useState<string>('RUN')
   const [ops, setOps] = useState<Record<string, boolean>>({ INSERT: true, UPDATE: true, DELETE: false })
+  const [db, setDb] = useState('')
+  const [table, setTable] = useState('')
+  const [cronExpression, setCronExpression] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Init bindings from existing subscription
+  useEffect(() => {
+    if (existing?.pipelineIds) {
+      const bound = existing.pipelineIds
+        .map((pid: number) => {
+          const p = pipelines.find((pl: PipelineDto) => pl.id === pid)
+          return p ? { id: p.id, name: p.name, labels: p.labels ?? {} } : null
+        })
+        .filter(Boolean) as PipelineBinding[]
+      setBindings(bound)
+    }
+    if (existing?.sourceType) {
+      setSource(existing.sourceType.toLowerCase() as 'cdc' | 'cron' | 'api')
+    }
+    if (existing?.actionType) setAction(existing.actionType)
+    if (existing?.db) setDb(existing.db)
+    if (existing?.table) setTable(existing.table)
+    if (existing?.cronExpression) setCronExpression(existing.cronExpression)
+    if (existing?.opTypes) {
+      const o: Record<string, boolean> = { INSERT: false, UPDATE: false, DELETE: false }
+      existing.opTypes.forEach((op: string) => { o[op] = true })
+      setOps(o)
+    }
+  }, [existing, pipelines])
 
   const addBinding = () => {
-    const available = pipelinePool.filter((p) => !bindings.find((b) => b.id === p.id))
+    const available = pipelines.filter((p: PipelineDto) => !bindings.find((b) => b.id === p.id))
     if (available.length === 0) {
       toast('All Rules are already bound')
       return
     }
     const pick = available[0]
-    setBindings((prev) => [...prev, pick])
-    toast.success(`Added ${pick.id} · Right fork synced`)
+    setBindings((prev) => [...prev, { id: pick.id, name: pick.name, labels: pick.labels ?? {} }])
+    toast.success(`Added ${pick.name}`)
   }
 
-  const removeBinding = (id: string) => {
+  const removeBinding = (id: number) => {
     setBindings((prev) => prev.filter((b) => b.id !== id))
+  }
+
+  const buildFields = (): SubscriptionFields => ({
+    pipelineIds: bindings.map((b) => b.id),
+    sourceType: source.toUpperCase() as SubscriptionFields['sourceType'],
+    actionType: action,
+    ...(source === 'cdc' ? { db, table, opTypes: (Object.entries(ops).filter(([, v]) => v).map(([k]) => k) as ('INSERT' | 'UPDATE' | 'DELETE')[]) } : {}),
+    ...(source === 'cron' ? { cronExpression } : {}),
+    name: subscriptionName,
+  })
+
+  const handleSave = async () => {
+    setSaving(true)
+    const fields = buildFields()
+    try {
+      if (existing) {
+        await updateMutation.mutateAsync({ name: subscriptionName, subscription: fields })
+        toast.success('Subscription updated')
+      } else {
+        await createMutation.mutateAsync({ subscription: fields })
+        toast.success('Subscription created')
+      }
+    } catch {
+      // error toasted by interceptor
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -128,21 +195,17 @@ function SubscriptionEditor() {
           <nav className="crumbs">
             <Link to="/subscriptions">Subscriptions</Link>
             <span className="sep">/</span>
-            <span className="current">Order Event Hub Subscription</span>
+            <span className="current">{subscriptionName || 'New Subscription'}</span>
           </nav>
           <div className="nav-spacer" />
           <div className="toolbar-actions">
-            <button className="btn btn-ghost" onClick={() => toast.success('Validation passed · 3 Rule bindings are valid')}>
+            <button className="btn btn-ghost" onClick={() => toast('Validation not yet implemented')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
               Validate
             </button>
-            <button className="btn btn-ghost" onClick={() => toast('Reset to initial state')}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
-              Reset
-            </button>
-            <button className="btn btn-primary" onClick={() => toast.success('Saved · v2')}>
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>
@@ -152,15 +215,14 @@ function SubscriptionEditor() {
         <div className="editor-title-block">
           <div>
             <h1 className="editor-title">
-              Order Event Hub Subscription
-              <span className="draft-pill">DRAFT · v2</span>
+              {subscriptionName || 'New Subscription'}
+              <span className="draft-pill">DRAFT</span>
             </h1>
             <p className="editor-subtitle">Configure Source event subscription, forking to one or more Rules for processing.</p>
           </div>
           <div className="editor-meta">
-            <span className="kv">Subscription ID <strong>sub_order_center_v2</strong></span>
-            <span className="kv">Namespace <strong>ops</strong></span>
-            <span className="kv">Updated <strong>3 min ago</strong></span>
+            <span className="kv">Namespace <strong>{namespace}</strong></span>
+            <span className="kv">POST /api/v1/namespaces/{namespace}/subscriptions</span>
           </div>
         </div>
 
@@ -183,7 +245,7 @@ function SubscriptionEditor() {
             </div>
             <div className="binding-meta">
               <span>Bound <span className="binding-count">{bindings.length}</span> Rules · Events will fan out</span>
-              <span>POST /api/v1/namespaces/ops/subscriptions</span>
+              <span>POST /api/v1/namespaces/{namespace}/subscriptions</span>
             </div>
           </section>
 
@@ -203,81 +265,49 @@ function SubscriptionEditor() {
               ))}
             </div>
             <div className="source-fields">
-              <div className="field-group">
-                <label className="field-label">mq</label>
-                <input className="field-input" defaultValue="kafka://orders-cluster" />
-              </div>
-              <div className="field-group">
-                <label className="field-label">topic</label>
-                <input className="field-input" defaultValue="cdc.orders.all" />
-              </div>
-              <div className="field-group">
-                <label className="field-label">db</label>
-                <input className="field-input" defaultValue="commerce_db" />
-              </div>
-              <div className="field-group">
-                <label className="field-label">table</label>
-                <input className="field-input" defaultValue="orders" />
-              </div>
-              <div className="field-group full">
-                <label className="field-label">opTypes</label>
-                <div className="op-types">
-                  {['INSERT', 'UPDATE', 'DELETE'].map((op) => (
-                    <button
-                      key={op}
-                      className={`op-chip${ops[op] ? ' on' : ''}`}
-                      onClick={() => setOps((prev) => ({ ...prev, [op]: !prev[op] }))}
-                    >{op}</button>
-                  ))}
+              {source === 'cdc' && (
+                <>
+                  <div className="field-group">
+                    <label className="field-label">db</label>
+                    <input className="field-input" value={db} onChange={(e) => setDb(e.target.value)} placeholder="e.g. commerce_db" />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">table</label>
+                    <input className="field-input" value={table} onChange={(e) => setTable(e.target.value)} placeholder="e.g. orders" />
+                  </div>
+                  <div className="field-group full">
+                    <label className="field-label">opTypes</label>
+                    <div className="op-types">
+                      {['INSERT', 'UPDATE', 'DELETE'].map((op) => (
+                        <button
+                          key={op}
+                          className={`op-chip${ops[op] ? ' on' : ''}`}
+                          onClick={() => setOps((prev) => ({ ...prev, [op]: !prev[op] }))}
+                        >{op}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+              {source === 'cron' && (
+                <div className="field-group full">
+                  <label className="field-label">cronExpression</label>
+                  <input className="field-input" value={cronExpression} onChange={(e) => setCronExpression(e.target.value)} placeholder="e.g. */10 * * * *" />
                 </div>
-              </div>
+              )}
+              {source === 'api' && (
+                <div className="field-group full">
+                  <label className="field-label">name</label>
+                  <input className="field-input" defaultValue={subscriptionName} readOnly />
+                </div>
+              )}
             </div>
           </section>
 
-          {/* ③ Condition editor */}
+          {/* ③ ActionType */}
           <section className="form-section">
             <div className="section-head">
               <span className="section-num">3</span>
-              <h3 className="section-title">Condition Editor</h3>
-              <span className="section-hint">fieldFilter · AND/OR combination + Compare/In leaves</span>
-            </div>
-            <div className="cond-tree">
-              <div className="cond-node">
-                <div className="cond-container" data-op="AND">
-                  <div className="cond-leaf compare">
-                    <span className="leaf-type">CMP</span>
-                    <span className="leaf-field">amount</span>
-                    <span className="leaf-op">GT</span>
-                    <span className="leaf-value">10000</span>
-                    <button className="leaf-remove" aria-label="Remove condition">{X_ICON}</button>
-                  </div>
-                  <div className="cond-container or" data-op="OR">
-                    <div className="cond-leaf in">
-                      <span className="leaf-type">IN</span>
-                      <span className="leaf-field">region</span>
-                      <span className="leaf-op">IN</span>
-                      <span className="leaf-value">[CN, US, EU]</span>
-                      <button className="leaf-remove" aria-label="Remove condition">{X_ICON}</button>
-                    </div>
-                    <div className="cond-leaf compare">
-                      <span className="leaf-type">CMP</span>
-                      <span className="leaf-field">user.tier</span>
-                      <span className="leaf-op">EQ</span>
-                      <span className="leaf-value">VIP</span>
-                      <button className="leaf-remove" aria-label="Remove condition">{X_ICON}</button>
-                    </div>
-                    <button className="cond-add">{PLUS_ICON}Leaf</button>
-                  </div>
-                  <button className="cond-add">{PLUS_ICON}Leaf / Container</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ④ ActionType */}
-          <section className="form-section">
-            <div className="section-head">
-              <span className="section-num">4</span>
               <h3 className="section-title">Action Type</h3>
               <span className="section-hint">Action executed against bound Rules when conditions are matched</span>
             </div>
@@ -291,8 +321,6 @@ function SubscriptionEditor() {
                 <div className="ac-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></div>
                 <div className="ac-label">SCHEDULE</div>
                 <div className="ac-desc">Delayed execution</div>
-                {/* TODO: When SCHEDULE is selected, expand scheduleDelayMs (number) + scheduleCorrelationKeyPath (text) inputs.
-                    Currently the form does not collect these two fields; backend SubscriptionDefinition already supports them, the frontend editor form is pending. */}
               </div>
               <div className={`action-card cancel${action === 'CANCEL' ? ' active' : ''}`} onClick={() => setAction('CANCEL')}>
                 <div className="ac-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="6" width="12" height="12" rx="1" /></svg></div>
@@ -331,7 +359,6 @@ function SubscriptionEditor() {
                   </filter>
                 </defs>
 
-                {/* Source node */}
                 <g transform="translate(40, 95)">
                   <circle r="32" fill="rgba(30, 64, 175, 0.08)" stroke="#1E40AF" strokeWidth="1.5" />
                   <circle r="22" fill="#1E40AF" opacity="0.18" />
@@ -339,7 +366,7 @@ function SubscriptionEditor() {
                     <path d="M3 12c3-4 9-4 12 0c3-4 9-4 12 0" transform="translate(-3 0)" />
                   </g>
                   <text x="0" y="52" textAnchor="middle" className="node-label">Source</text>
-                  <text x="0" y="66" textAnchor="middle" className="node-sub">CDC · kafka</text>
+                  <text x="0" y="66" textAnchor="middle" className="node-sub">{source.toUpperCase()}</text>
                 </g>
 
                 <path d="M 75 110 C 130 110, 150 110, 195 110" stroke="url(#flowGrad)" strokeWidth="2.5" fill="none" className="fork-energized" />
@@ -347,7 +374,6 @@ function SubscriptionEditor() {
                   <animateMotion dur="2.4s" repeatCount="indefinite" path="M 75 110 C 130 110, 150 110, 195 110" />
                 </circle>
 
-                {/* Subscription node */}
                 <g transform="translate(240, 95)">
                   <rect x="-45" y="-40" width="90" height="80" rx="14" fill="rgba(217, 119, 6, 0.10)" stroke="#D97706" strokeWidth="1.5" />
                   <rect x="-35" y="-32" width="70" height="64" rx="10" fill="#fff" opacity="0.5" />
@@ -355,13 +381,12 @@ function SubscriptionEditor() {
                     <path d="M2 6h20M2 12h20M2 18h13" />
                   </g>
                   <text x="0" y="14" textAnchor="middle" className="node-label">Subscription</text>
-                  <text x="0" y="28" textAnchor="middle" className="node-sub">amount &gt; 10000</text>
-                  <text x="0" y="58" textAnchor="middle" className="node-sub" style={{ fill: '#D97706', fontWeight: 600 }}>OR · region IN [CN,US,EU]</text>
+                  <text x="0" y="28" textAnchor="middle" className="node-sub">{action}</text>
+                  <text x="0" y="58" textAnchor="middle" className="node-sub" style={{ fill: '#D97706', fontWeight: 600 }}>{subscriptionName}</text>
                 </g>
 
                 <path d="M 285 110 L 330 110" stroke="url(#branchGrad)" strokeWidth="2.5" fill="none" className="fork-energized" />
 
-                {/* Fork node (junction) */}
                 <circle cx="335" cy="110" r="6" fill="#D97706" filter="url(#glow)">
                   <animate attributeName="r" values="5;7;5" dur="1.6s" repeatCount="indefinite" />
                 </circle>

@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useNamespace } from '../context/NamespaceContext'
 
 type RoleKey = 'common' | 'alert' | 'config'
 
@@ -124,10 +125,28 @@ export function Topbar({
   leftExtra,
   rightExtra,
   children,
-  namespace = 'ops',
+  namespace: namespaceProp,
   hideDemoEntry = false,
 }: TopbarProps) {
   const { pathname } = useLocation()
+  const { namespaces, namespace: ctxNamespace, setNamespace, loading } = useNamespace()
+  const [nsOpen, setNsOpen] = useState(false)
+  const nsRef = useRef<HTMLDivElement>(null)
+
+  // Allow prop override, fall back to context
+  const namespace = namespaceProp ?? ctxNamespace
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!nsOpen) return
+    const handler = (e: MouseEvent) => {
+      if (nsRef.current && !nsRef.current.contains(e.target as Node)) {
+        setNsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [nsOpen])
 
   if (children) {
     return (
@@ -152,12 +171,37 @@ export function Topbar({
           <span>A-Solid Observe</span>
         </Link>
 
-        {showNamespace && (
-          <button className="namespace-switch" type="button" aria-label="Switch namespace" title="Switch namespace">
-            <span className="namespace-dot" />
-            <span>namespace:&nbsp;<strong>{namespace}</strong></span>
-            <ChevronDown />
-          </button>
+        {showNamespace && namespaces.length > 0 && (
+          <div className="namespace-switch-wrap" ref={nsRef}>
+            <button
+              className="namespace-switch"
+              type="button"
+              aria-label="Switch namespace"
+              title="Switch namespace"
+              onClick={() => setNsOpen((v) => !v)}
+            >
+              <span className="namespace-dot" />
+              <span>ns:&nbsp;<strong>{namespace || '...'}</strong></span>
+              <ChevronDown />
+            </button>
+            {nsOpen && (
+              <div className="namespace-dropdown">
+                {namespaces.map((ns) => (
+                  <button
+                    key={ns.name}
+                    className={`namespace-dropdown-item${ns.name === namespace ? ' active' : ''}`}
+                    onClick={() => { setNamespace(ns.name); setNsOpen(false) }}
+                  >
+                    <span className="namespace-dot" />
+                    <span>{ns.displayName || ns.name}</span>
+                    {ns.name === namespace && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12l5 5L20 7" /></svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <nav className="role-nav" aria-label="Main navigation">

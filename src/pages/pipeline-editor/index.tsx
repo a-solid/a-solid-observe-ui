@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import CodeMirror from '@uiw/react-codemirror'
 import { EditorView } from '@codemirror/view'
 import { StreamLanguage } from '@codemirror/language'
@@ -9,16 +9,17 @@ import { createTheme } from '@uiw/codemirror-themes'
 import { tags as t } from '@lezer/highlight'
 import { toast } from 'sonner'
 import { JsonView } from '../../components/JsonView'
+import { useNamespace } from '../../context/NamespaceContext'
+import { usePipeline } from '../../hooks/usePipelines'
+import { validateApi } from '../../api/validate'
+import { injectApi } from '../../api/inject'
+import { versionApi } from '../../api/version'
+import type { ValidationResultDto, DryRunResultDto, InjectResultDto } from '../../api/types'
 import {
-  groovyScript,
-  initialLabels,
   ctxChips,
   dryRunEvents,
   injectTemplates,
-  injectPipelineMeta,
-  mockInject,
   type DryRunEvent,
-  type InjectResult,
 } from './mock'
 import './pipelineEditor.css'
 
@@ -50,6 +51,7 @@ const groovyTheme = createTheme({
 })
 
 const ICON_CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l5 5L20 7" /></svg>
+const ICON_X = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 6l12 12M6 18L18 6" /></svg>
 const ICON_BOLT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
 const ICON_ALERT = <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 6l6.5 12h-13L12 8zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z" /></svg>
 const ICON_PLAY = <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
@@ -88,7 +90,6 @@ function CausalCard({ node, ev }: { node: string; ev: DryRunEvent }) {
       </div>
     )
   }
-  // output-miss
   return (
     <div className="causal-card">
       <span className="k">NodeOutcome.SHORT_CIRCUIT</span> · No alert triggered · Flow terminated
@@ -96,59 +97,217 @@ function CausalCard({ node, ev }: { node: string; ev: DryRunEvent }) {
   )
 }
 
+function ValidationResult({ result }: { result: ValidationResultDto | null }) {
+  if (!result) return null
+  const ok = result.ok
+  return (
+    <div className="validation-result">
+      <div className={`validation-icon${ok ? '' : ' fail'}`}>
+        {ok ? ICON_CHECK : ICON_X}
+      </div>
+      <div className="validation-text">
+        <div className="validation-title">
+          {ok ? 'Validation passed · Ready to publish' : 'Validation failed'}
+        </div>
+        {ok ? (
+          <div className="validation-sub">definitionHash generated</div>
+        ) : (
+          <div className="validation-sub" style={{ color: 'var(--severity-critical)' }}>
+            {result.errors?.map((e: string, i: number) => (
+              <div key={i}>{e}</div>
+            )) ?? 'Unknown error'}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DryRunResultView({ result }: { result: DryRunResultDto | null }) {
+  if (!result) return null
+  return (
+    <div className="validation-result">
+      <div className="validation-text">
+        <div className="validation-title">
+          Dry run: <span style={{ fontWeight: 700 }}>{result.outcome}</span>
+        </div>
+        {result.alerts && result.alerts.length > 0 && (
+          <div className="validation-sub">
+            {result.alerts.length} alert(s) generated
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InjectResultCard({ result }: { result: InjectResultDto }) {
+  const ok = result.outcome === 'SUCCESS'
+  const cls = ok ? 'success' : 'fail'
+  return (
+    <div className={`inject-result ${cls}`}>
+      <div className="ir-head">
+        <span className={`ir-badge ${cls}`}>{result.outcome}</span>
+        <span className="ir-msg">{result.outcome}</span>
+      </div>
+    </div>
+  )
+}
+
 function PipelineEditor() {
+  const { id } = useParams<{ id: string }>()
+  const { namespace } = useNamespace()
+  const pipelineName = id ?? ''
+
+  // Fetch pipeline metadata
+  const { data: pipeline } = usePipeline(namespace, pipelineName)
+
   const [tab, setTab] = useState<'visual' | 'json'>('visual')
-  const [labels, setLabels] = useState(initialLabels.map((l) => ({ ...l })))
-  const [code, setCode] = useState(groovyScript)
+  const [labels, setLabels] = useState<{ key: string; value: string }[]>(() =>
+    pipeline?.labels
+      ? Object.entries(pipeline.labels).map(([k, v]) => ({ key: k, value: v }))
+      : [{ key: 'app', value: 'order-service' }, { key: 'line', value: 'commerce' }, { key: 'team', value: 'payment' }, { key: 'domain', value: 'risk-control' }],
+  )
+  const [code, setCode] = useState(`// High-amount order alert · GroovyScriptEngine sandbox (5s timeout)
+def amount = event.getAt("after.amount") ?: event.getAt("amount")
+def threshold = 10000
+
+if (amount as BigDecimal > threshold) {
+  alerts.emit(
+    "high-amount-order",            // fingerprint
+    "CRITICAL",                     // severity
+    [app: "order-service", team: "payment"],
+    [summary: "amount \${amount} > \${threshold}"]
+  )
+  return true   // matched
+}
+return false   // SHORT_CIRCUITED`)
   const [ev, setEv] = useState<DryRunEvent>('match')
   const [shownSteps, setShownSteps] = useState<number>(0)
   const runTimer = useRef<number | undefined>(undefined)
 
-  const data = dryRunEvents[ev]
+  // API states
+  const [validating, setValidating] = useState(false)
+  const [validationResult, setValidationResult] = useState<ValidationResultDto | null>(null)
+  const [dryRunning, setDryRunning] = useState(false)
+  const [dryRunResult, setDryRunResult] = useState<DryRunResultDto | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [publishing, setPublishing] = useState(false)
 
-  const runDryRun = async () => {
-    setShownSteps(0)
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce) {
-      setShownSteps(data.steps.length)
-      toast.success(ev === 'match' ? 'Dry run complete · Alert condition matched' : 'Dry run complete · Not matched')
-      return
-    }
-    for (let i = 1; i <= data.steps.length; i++) {
-      setShownSteps(i)
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise<void>((r) => {
-        runTimer.current = window.setTimeout(r, 400)
-      })
-    }
-    toast.success(ev === 'match' ? 'Dry run complete · Alert condition matched' : 'Dry run complete · Not matched')
-  }
-
-  useEffect(() => () => { if (runTimer.current) window.clearTimeout(runTimer.current) }, [])
-
-  // Inject state (production runner — real alerts/executions land in DB)
+  // Inject state
   const [injectEventJson, setInjectEventJson] = useState(injectTemplates[0].eventJson)
   const [injecting, setInjecting] = useState(false)
-  const [injectResult, setInjectResult] = useState<InjectResult | null>(null)
+  const [injectResult, setInjectResult] = useState<InjectResultDto | null>(null)
 
-  const runInject = async () => {
+  const data = dryRunEvents[ev]
+
+  // Build pipeline JSON from current editor state
+  const buildPipelineJson = () =>
+    JSON.stringify({
+      name: pipelineName,
+      description: pipeline?.description ?? '',
+      labels: Object.fromEntries(labels.filter((l) => l.key).map((l) => [l.key, l.value])),
+      nodes: [{ name: 'check', scriptSource: code }],
+    })
+
+  const handleValidate = async () => {
+    setValidating(true)
+    setValidationResult(null)
+    try {
+      const result = await validateApi.validatePipeline({ pipelineJson: buildPipelineJson() })
+      setValidationResult(result)
+      if (result.ok) {
+        toast.success('Validation passed')
+      } else {
+        toast.error('Validation failed', { description: result.errors?.join(', ') })
+      }
+    } catch {
+      // error already toasted by interceptor
+    } finally {
+      setValidating(false)
+    }
+  }
+
+  const handleDryRun = async () => {
+    setDryRunning(true)
+    setDryRunResult(null)
+    // Show animated causal flow
+    setShownSteps(0)
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!reduce) {
+      for (let i = 1; i <= data.steps.length; i++) {
+        setShownSteps(i)
+        await new Promise<void>((r) => {
+          runTimer.current = window.setTimeout(r, 400)
+        })
+      }
+    } else {
+      setShownSteps(data.steps.length)
+    }
+
+    try {
+      const result = await validateApi.dryRun({
+        pipelineJson: buildPipelineJson(),
+        eventJson: JSON.stringify(data.event),
+      })
+      setDryRunResult(result)
+      toast.success(`Dry run complete · ${result.outcome}`)
+    } catch {
+      // error already toasted
+    } finally {
+      setDryRunning(false)
+    }
+  }
+
+  const handleSaveVersion = async () => {
+    setSaving(true)
+    try {
+      await versionApi.saveVersion(namespace, pipelineName, {
+        pipelineJson: buildPipelineJson(),
+      })
+      toast.success('Version saved')
+    } catch {
+      // error already toasted
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    setPublishing(true)
+    try {
+      // Save first, then publish the saved version
+      const saved = await versionApi.saveVersion(namespace, pipelineName, {
+        pipelineJson: buildPipelineJson(),
+      })
+      if (saved.version != null) {
+        await versionApi.publish(namespace, pipelineName, saved.version)
+        toast.success(`Published v${saved.version}`)
+      }
+    } catch {
+      // error already toasted
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const handleInject = async () => {
     setInjecting(true)
     setInjectResult(null)
-    const result = await mockInject(injectEventJson, injectPipelineMeta)
-    setInjectResult(result)
-    setInjecting(false)
-    if (result.outcome === 'SUCCESS') {
-      if (result.alertFingerprint) {
-        toast.success('Inject succeeded · Alert generated', { description: `fingerprint=${result.alertFingerprint}` })
+    try {
+      const result = await injectApi.inject(namespace, pipelineName, {
+        eventJson: injectEventJson,
+      })
+      setInjectResult(result)
+      if (result.outcome === 'SUCCESS') {
+        toast.success('Inject succeeded')
       } else {
-        toast.success('Inject succeeded · Alert condition not matched')
+        toast.error(`Inject: ${result.outcome}`)
       }
-    } else if (result.outcome === 'FAILED') {
-      toast.error('Inject failed · Runner threw an exception')
-    } else if (result.outcome === 'PIPELINE_NOT_FOUND') {
-      toast.error('Rule not loaded', { description: 'Check if it is published / hot-reloaded' })
-    } else {
-      toast.error('Invalid eventJson')
+    } catch {
+      // error already toasted
+    } finally {
+      setInjecting(false)
     }
   }
 
@@ -160,7 +319,20 @@ function PipelineEditor() {
   const switchEvent = (next: DryRunEvent) => {
     setEv(next)
     setShownSteps(0)
+    setDryRunResult(null)
   }
+
+  useEffect(() => () => { if (runTimer.current) window.clearTimeout(runTimer.current) }, [])
+
+  // Sync labels from pipeline when loaded
+  useEffect(() => {
+    if (pipeline?.labels) {
+      const entries = Object.entries(pipeline.labels)
+      if (entries.length > 0) {
+        setLabels(entries.map(([k, v]) => ({ key: k, value: v })))
+      }
+    }
+  }, [pipeline?.labels])
 
   const groovyHost = tab === 'visual' && (
     <div className="groovy-host">
@@ -177,7 +349,7 @@ function PipelineEditor() {
 
   return (
     <>
-      {/* Custom topbar — no namespace, role tab Config */}
+      {/* Custom topbar */}
       <header className="topbar">
         <div className="topbar-inner" style={{ maxWidth: 1600, padding: '14px var(--space-xl)', gap: 'var(--space-lg)' }}>
           <Link className="brand" to="/">
@@ -195,22 +367,30 @@ function PipelineEditor() {
 
       <div className="editor-toolbar">
         <div className="editor-toolbar-inner">
-          <span className="editor-name">High-Amount Order Alert</span>
-          <span className="editor-version"><span className="dot" />draft v4</span>
-          <span className="editor-meta">namespace/ops · Unsaved changes</span>
+          <span className="editor-name">{pipeline?.name ?? pipelineName}</span>
+          <span className="editor-version">
+            <span className="dot" />
+            {pipeline?.status === 'PUBLISHED' ? `v${pipeline.currentVersion}` : 'draft'}
+            {pipeline?.currentVersion != null ? ` v${pipeline.currentVersion}` : ''}
+          </span>
+          <span className="editor-meta">{namespace}/{pipelineName}</span>
           <div className="toolbar-spacer" />
-          <button className="btn btn-secondary" onClick={() => toast.success('Validation passed · definitionHash generated')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+          <button className="btn btn-secondary" onClick={handleValidate} disabled={validating}>
+            {validating ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin"><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+            )}
             Validate
           </button>
-          <button className="btn btn-warn" onClick={() => { document.querySelector('.right-pane')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.setTimeout(runDryRun, 400) }}>
+          <button className="btn btn-warn" onClick={() => { document.querySelector('.right-pane')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.setTimeout(handleDryRun, 400) }} disabled={dryRunning}>
             {ICON_BOLT}Dry Run
           </button>
-          <button className="btn btn-secondary" onClick={() => toast.success('Saved as new version · draft v5')}>
+          <button className="btn btn-secondary" onClick={handleSaveVersion} disabled={saving}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
             Save Version
           </button>
-          <button className="btn btn-primary" onClick={() => toast.success('Published · v5 PUBLISHED')}>
+          <button className="btn btn-primary" onClick={handlePublish} disabled={publishing}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
             Publish
           </button>
@@ -251,11 +431,6 @@ function PipelineEditor() {
                           <span className="node-type-tag">GROOVY</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#94A3B8', fontFamily: "'Fira Code', monospace" }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#86EFAC' }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l5 5L20 7" /></svg>
-                            Compiled
-                          </span>
-                          <span>·</span>
                           <span>{code.split('\n').length} lines · {code.length} chars</span>
                         </div>
                       </div>
@@ -319,14 +494,9 @@ function PipelineEditor() {
               </>
             ) : (
               <div className="json-editor">
-                <span className="c">{'// PipelineDefinition · draft v4 · GroovyScriptEngine sandbox (whitelist import / 5s timeout)'}</span>
+                <span className="c">{'// PipelineDefinition · GroovyScriptEngine sandbox (whitelist import / 5s timeout)'}</span>
                 {'\n{\n  '}
-                <span className="k">"id"</span>: <span className="n">1001</span>,
-                {'\n  '}<span className="k">"namespace"</span>: <span className="s">"ops"</span>,
-                {'\n  '}<span className="k">"name"</span>: <span className="s">"high-amount-order-alert"</span>,
-                {'\n  '}<span className="k">"description"</span>: <span className="s">"High-amount order alert · amount &gt; 10000"</span>,
-                {'\n  '}<span className="k">"status"</span>: <span className="s">"DRAFT"</span>,
-                {'\n  '}<span className="k">"currentVersion"</span>: <span className="n">4</span>,
+                <span className="k">"name"</span>: <span className="s">"{pipelineName}"</span>,
                 {'\n  '}<span className="k">"labels"</span>: {'{\n    '}
                 {labels.map((l, i) => (
                   <span key={i}>
@@ -335,7 +505,7 @@ function PipelineEditor() {
                   </span>
                 ))}
                 {'}'},
-                {'\n  '}<span className="k">"version"</span>: {'{\n    '}<span className="k">"nodes"</span>: [{'{'}
+                {'\n  '}<span className="k">"nodes"</span>: [{'{'}
                 {'\n      '}<span className="k">"name"</span>: <span className="s">"check"</span>,
                 {'\n      '}<span className="k">"scriptSource"</span>: <span className="s">{JSON.stringify(code)}</span>
                 {'\n    }'}{']}\n}'}</div>
@@ -350,35 +520,15 @@ function PipelineEditor() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
               Validation Result
             </p>
-            <div className="validation-result">
-              <div className="validation-icon">{ICON_CHECK}</div>
-              <div className="validation-text">
-                <div className="validation-title">Validation passed · Ready to publish</div>
-                <div className="validation-sub">definitionHash: 0x9a4f...e21b</div>
+            {validationResult ? (
+              <ValidationResult result={validationResult} />
+            ) : (
+              <div className="validation-result">
+                <div className="validation-text">
+                  <div className="validation-sub">Click Validate to check the pipeline definition</div>
+                </div>
               </div>
-            </div>
-            <div className="validation-checks">
-              <div className="check-row">
-                <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">Groovy compilation passed · <span className="mono">SecureASTCustomizer</span></span>
-              </div>
-              <div className="check-row">
-                <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">All imports matched the whitelist</span>
-              </div>
-              <div className="check-row">
-                <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">No receivers blacklist calls</span>
-              </div>
-              <div className="check-row">
-                <span className="check-icon">{ICON_CHECK}</span>
-                <span className="check-text">Timeout threshold <span className="mono">5000ms</span> applied</span>
-              </div>
-              <div className="check-row muted">
-                <span className="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 8v4" /></svg></span>
-                <span className="check-text">Suggestion: labels should at least include <span className="mono">team</span></span>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="section-block">
@@ -400,9 +550,14 @@ function PipelineEditor() {
               </div>
             </div>
 
-            <button className="run-btn" onClick={runDryRun}>
-              {ICON_PLAY}Run Dry Run
+            <button className="run-btn" onClick={handleDryRun} disabled={dryRunning}>
+              {dryRunning ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin"><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+              ) : ICON_PLAY}
+              {dryRunning ? 'Running...' : 'Run Dry Run'}
             </button>
+
+            {dryRunResult && <DryRunResultView result={dryRunResult} />}
 
             <div className="causal-flow">
               {data.steps.map((s, i) => (
@@ -427,7 +582,7 @@ function PipelineEditor() {
                 <div className="iw-strong">Real DB write · Not rolled back</div>
                 <div className="iw-sub">
                   Unlike dry run: goes through the production runner. Alerts land in the DB, execution records are actually written.
-                  <span className="mono">POST /api/v1/namespaces/{injectPipelineMeta.namespace}/pipelines/{injectPipelineMeta.name}/inject</span>
+                  <span className="mono">POST /api/v1/namespaces/{namespace}/pipelines/{pipelineName}/inject</span>
                 </div>
               </div>
             </div>
@@ -462,7 +617,7 @@ function PipelineEditor() {
               className="inject-btn"
               type="button"
               disabled={injecting}
-              onClick={runInject}
+              onClick={handleInject}
             >
               {injecting ? (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin"><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
@@ -477,37 +632,6 @@ function PipelineEditor() {
         </div>
       </main>
     </>
-  )
-}
-
-function InjectResultCard({ result }: { result: InjectResult }) {
-  const ok = result.outcome === 'SUCCESS'
-  const partial = ok && !result.alertFingerprint
-  const cls = ok ? (partial ? 'partial' : 'success') : 'fail'
-  return (
-    <div className={`inject-result ${cls}`}>
-      <div className="ir-head">
-        <span className={`ir-badge ${cls}`}>{result.outcome}</span>
-        <span className="ir-msg">{result.message}</span>
-        {typeof result.durationMs === 'number' && (
-          <span className="ir-dur">{result.durationMs} ms</span>
-        )}
-      </div>
-      {result.executionId && (
-        <div className="ir-links">
-          <Link to="/executions" className="ir-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg>
-            execution: <span className="mono">{result.executionId}</span>
-          </Link>
-          {result.alertFingerprint && (
-            <Link to="/alerts" className="ir-link alert">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 16v-5a6 6 0 0 0-12 0v5l-2 2h16l-2-2z" /><path d="M10 21a2 2 0 0 0 4 0" /></svg>
-              alert: <span className="mono">{result.alertFingerprint}</span>
-            </Link>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 
