@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import CodeMirror from '@uiw/react-codemirror'
 import { EditorView } from '@codemirror/view'
@@ -11,10 +11,10 @@ import { toast } from 'sonner'
 import { JsonView } from '../../components/JsonView'
 import { useNamespace } from '../../context/NamespaceContext'
 import { usePipeline, useCreatePipeline } from '../../hooks/usePipelines'
+import { useVersions } from '../../hooks/useVersions'
 import { validateApi } from '../../api/validate'
 import { injectApi } from '../../api/inject'
 import { versionApi } from '../../api/version'
-import { pipelineApi } from '../../api/pipeline'
 import type { ValidationResultDto, DryRunResultDto, InjectResultDto } from '../../api/types'
 import {
   ctxChips,
@@ -158,35 +158,37 @@ function InjectResultCard({ result }: { result: InjectResultDto }) {
 function PipelineEditor() {
   const { name: urlName } = useParams<{ name?: string }>()
   const { namespace } = useNamespace()
-  // /pipelines/new → no name param = create mode; /pipelines/:name/edit → edit mode
   const isNew = !urlName
   const pipelineName = urlName ?? ''
 
-  // Only fetch existing pipeline; skip for new
+  // Fetch pipeline metadata + versions (for script content)
   const { data: pipeline } = usePipeline(namespace, isNew ? '' : pipelineName)
+  const { data: versions = [] } = useVersions(namespace, isNew ? '' : pipelineName)
   const createMutation = useCreatePipeline(namespace)
+
+  // Find the latest version with definitionJson to pre-fill editor
+  const latestVersion = versions.length > 0 ? versions[0] : null
+  const definition = useMemo(() => {
+    if (!latestVersion?.definitionJson) return null
+    try {
+      return JSON.parse(latestVersion.definitionJson) as {
+        nodes?: { name?: string; scriptSource?: string }[]
+        labels?: Record<string, string>
+        description?: string
+      }
+    } catch {
+      return null
+    }
+  }, [latestVersion?.definitionJson])
 
   const [tab, setTab] = useState<'visual' | 'json'>('visual')
   const [pipelineNameInput, setPipelineNameInput] = useState('')
   const [labels, setLabels] = useState<{ key: string; value: string }[]>(() =>
     pipeline?.labels
       ? Object.entries(pipeline.labels).map(([k, v]) => ({ key: k, value: v }))
-      : [{ key: 'app', value: 'order-service' }, { key: 'line', value: 'commerce' }, { key: 'team', value: 'payment' }, { key: 'domain', value: 'risk-control' }],
+      : [{ key: 'app', value: '' }, { key: 'team', value: '' }],
   )
-  const [code, setCode] = useState(`// High-amount order alert · GroovyScriptEngine sandbox (5s timeout)
-def amount = event.getAt("after.amount") ?: event.getAt("amount")
-def threshold = 10000
-
-if (amount as BigDecimal > threshold) {
-  alerts.emit(
-    "high-amount-order",            // fingerprint
-    "CRITICAL",                     // severity
-    [app: "order-service", team: "payment"],
-    [summary: "amount \${amount} > \${threshold}"]
-  )
-  return true   // matched
-}
-return false   // SHORT_CIRCUITED`)
+  const [code, setCode] = useState('// Write your Groovy script here...')
   const [ev, setEv] = useState<DryRunEvent>('match')
   const [shownSteps, setShownSteps] = useState<number>(0)
   const runTimer = useRef<number | undefined>(undefined)
@@ -362,15 +364,27 @@ return false   // SHORT_CIRCUITED`)
 
   useEffect(() => () => { if (runTimer.current) window.clearTimeout(runTimer.current) }, [])
 
-  // Sync labels from pipeline when loaded
+  // Sync code & labels from version definitionJson (takes priority) or pipeline metadata
   useEffect(() => {
-    if (pipeline?.labels) {
+    if (definition) {
+      // Load script from the definition's nodes
+      const scriptSource = definition.nodes?.[0]?.scriptSource
+      if (scriptSource) setCode(scriptSource)
+      // Load labels from definition
+      if (definition.labels) {
+        const entries = Object.entries(definition.labels)
+        if (entries.length > 0) {
+          setLabels(entries.map(([k, v]) => ({ key: k, value: v })))
+        }
+      }
+    } else if (pipeline?.labels) {
+      // Fallback: pipeline metadata labels
       const entries = Object.entries(pipeline.labels)
       if (entries.length > 0) {
         setLabels(entries.map(([k, v]) => ({ key: k, value: v })))
       }
     }
-  }, [pipeline?.labels])
+  }, [definition, pipeline?.labels])
 
   const groovyHost = tab === 'visual' && (
     <div className="groovy-host">
@@ -422,8 +436,7 @@ return false   // SHORT_CIRCUITED`)
           )}
           <span className="editor-version">
             <span className="dot" />
-            {pipeline?.status === 'PUBLISHED' ? `v${pipeline.currentVersion}` : 'draft'}
-            {pipeline?.currentVersion != null ? ` v${pipeline.currentVersion}` : ''}
+            {pipeline ? (pipeline.status === 'PUBLISHED' ? `v${pipeline.currentVersion}` : `draft (latest v${pipeline.currentVersion})`) : 'new'}
           </span>
           <span className="editor-meta">{namespace}/{pipelineName}</span>
           <div className="toolbar-spacer" />

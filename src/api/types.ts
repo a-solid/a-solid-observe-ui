@@ -135,6 +135,7 @@ export interface VersionDto {
   pipelineId: number
   version: number
   definitionHash: string
+  definitionJson?: string
   status: string
   publishedBy?: string
   createdAt: string

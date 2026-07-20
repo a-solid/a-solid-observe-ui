@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
@@ -11,7 +11,6 @@ import { Topbar } from '../../components/Topbar'
 import { useNamespace } from '../../context/NamespaceContext'
 import { useVersions, usePublishVersion, useArchiveVersion } from '../../hooks/useVersions'
 import type { VersionDto } from '../../api/types'
-import { OLD_SCRIPT, NEW_SCRIPT } from './mock'
 import './versions.css'
 
 const groovyHighlightStyle = HighlightStyle.define([
@@ -73,20 +72,45 @@ function Versions() {
   const [selected, setSelected] = useState<string>('')
   const [confirmOpen, setConfirmOpen] = useState(false)
 
-  // Auto-select first non-published version for comparison
-  useEffect(() => {
-    if (versions.length > 0 && !selected) {
-      const first = versions[0]
-      setSelected(`v${first.version}`)
+  // Parse definitionJson from a version to extract scriptSource
+  const getScript = (v: VersionDto | undefined): string => {
+    if (!v?.definitionJson) return '// No definition available'
+    try {
+      const def = JSON.parse(v.definitionJson) as { nodes?: { scriptSource?: string }[] }
+      return def.nodes?.[0]?.scriptSource ?? '// No script in definition'
+    } catch {
+      return '// Failed to parse definitionJson'
     }
-  }, [versions, selected])
+  }
 
-  const buildMerge = (m: 'merge' | 'side') => {
+  // Map versions to labels for selection
+  const versionLabels = useMemo(() => {
+    return versions.map((v) => ({ label: `v${v.version}`, version: v }))
+  }, [versions])
+
+  // Selected version object
+  const selectedVersion = versionLabels.find((vl) => vl.label === selected)?.version
+
+  // Latest version for "b" side (newer)
+  const latestVersion = versions.length > 0 ? versions[0] : null
+
+  // Scripts from definitionJson (real data)
+  const oldScript = getScript(selectedVersion)
+  const newScript = getScript(latestVersion)
+
+  // Auto-select first version
+  useEffect(() => {
+    if (versionLabels.length > 0 && !selected) {
+      setSelected(versionLabels[0].label)
+    }
+  }, [versionLabels, selected])
+
+  const buildMerge = (m: 'merge' | 'side', oldS: string, newS: string) => {
     if (!hostRef.current) return
     mergeRef.current?.destroy()
     const mv = new MergeView({
-      a: { doc: OLD_SCRIPT, extensions: sharedExtensions },
-      b: { doc: NEW_SCRIPT, extensions: sharedExtensions },
+      a: { doc: oldS, extensions: sharedExtensions },
+      b: { doc: newS, extensions: sharedExtensions },
       orientation: 'a-b',
       revertControls: 'a-to-b',
       gutter: true,
@@ -106,10 +130,10 @@ function Versions() {
   }
 
   useEffect(() => {
-    buildMerge(mode)
+    buildMerge(mode, oldScript, newScript)
     return () => { mergeRef.current?.destroy(); mergeRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
+  }, [mode, oldScript, newScript])
 
   const publishedVersion = versions.find((v: VersionDto) => v.status === 'PUBLISHED')
   const draftVersion = versions.find((v: VersionDto) => v.status === 'DRAFT')
@@ -160,17 +184,16 @@ function Versions() {
             <aside className="timeline-pane">
               <p className="timeline-head">Version Timeline</p>
               <div className="version-list">
-                {versions.map((item: VersionDto) => {
+                {versionLabels.map(({ label, version: item }) => {
                   const isCurrent = item.status === 'PUBLISHED'
-                  const vLabel = `v${item.version}`
                   return (
                     <div
                       key={item.version}
-                      className={`version-item ${item.status?.toLowerCase()}${isCurrent ? ' current' : ''}${selected === vLabel ? ' selected' : ''}`}
-                      onClick={() => { setSelected(vLabel); toast.success(`Selected ${vLabel} for diff comparison`) }}
+                      className={`version-item ${item.status?.toLowerCase()}${isCurrent ? ' current' : ''}${selected === label ? ' selected' : ''}`}
+                      onClick={() => { setSelected(label); toast.success(`Selected ${label} for diff comparison`) }}
                     >
                       <div className="version-row">
-                        <span className="version-num">{vLabel}</span>
+                        <span className="version-num">{label}</span>
                         <span className={`version-status-tag ${isCurrent ? 'current' : item.status?.toLowerCase()}`}>
                           {item.status?.toUpperCase()}
                         </span>
@@ -197,17 +220,17 @@ function Versions() {
                     <span className="diff-from">{selected}</span>
                     <span className="diff-arrow">→</span>
                     <span className="diff-to">
-                      {draftVersion ? `v${draftVersion.version}` : 'latest'}
+                      {latestVersion ? `v${latestVersion.version}` : '--'}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)' }}>scriptSource changes</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)' }}>scriptSource diff</span>
                   </h2>
-                  <div className="diff-meta" style={{ marginTop: 6 }}>Spanning versions · Groovy script comparison</div>
+                  <div className="diff-meta" style={{ marginTop: 6 }}>{selectedVersion?.definitionHash ? `hash: ${selectedVersion.definitionHash.slice(0, 12)}...` : ''}</div>
                 </div>
               </div>
 
               <div className="diff-toolbar">
                 <div className="diff-toolbar-left">
-                  <span className="diff-side-head">{selected} → {draftVersion ? `v${draftVersion.version}` : 'latest'} · nodes[0].scriptSource · Groovy</span>
+                  <span className="diff-side-head">{selected} → {latestVersion ? `v${latestVersion.version}` : '--'} · nodes[0].scriptSource</span>
                 </div>
                 <div className="diff-mode-switch">
                   <button className={`mode-btn${mode === 'merge' ? ' active' : ''}`} onClick={() => setMode('merge')}>Merge View</button>
